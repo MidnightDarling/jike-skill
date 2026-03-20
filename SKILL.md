@@ -20,14 +20,21 @@ comment, search, and check notifications. Auth is QR scan (no passwords).
 
 ### 1. Authenticate
 
-Run `scripts/auth.py` — user scans the terminal QR with Jike app:
+Run `scripts/auth.py` — generates a QR code for scanning with Jike app:
 
 ```bash
 python3 scripts/auth.py
 ```
 
+**Two ways to scan the QR code:**
+
+1. **HTML file (recommended)** — A QR code HTML page is automatically generated at `/tmp/jike_qr_login.html`. Open it in your browser and scan with the Jike app.
+2. **Terminal ASCII** — If `qrcode` library is installed, an ASCII QR code is also printed in the terminal.
+
 Outputs JSON with `access_token` and `refresh_token` to stdout.
 Save the `refresh_token` for reuse (long validity, avoids re-scanning).
+
+> **Troubleshooting:** If the QR code appears truncated in terminal, always use the HTML file method (`file:///tmp/jike_qr_login.html`).
 
 ### 2. Interact
 

@@ -46,13 +46,51 @@ def build_qr_payload(uuid: str) -> str:
     )
 
 
-def render_qr(data: str) -> bool:
+def render_qr(data: str, uuid: str) -> bool:
+    """Render QR code both as ASCII and HTML file for better UX."""
     try:
         import qrcode
-        qr = qrcode.QRCode(border=1)
+        import base64
+        from io import BytesIO
+
+        # Generate QR image
+        qr = qrcode.QRCode(version=1, box_size=10, border=2)
         qr.add_data(data)
         qr.make(fit=True)
-        qr.print_ascii(out=sys.stderr)
+        img = qr.make_image(fill_color='black', back_color='white')
+
+        # Save to buffer and encode as base64
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        img_base64 = base64.b64encode(buffer.getvalue()).decode()
+
+        # Create HTML file with embedded QR
+        html = f'''<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>即刻二维码登录</title></head>
+<body style="display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f5f5f5;font-family:sans-serif;">
+<div style="background:white;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1);text-align:center;">
+<h2 style="color:#333;margin-bottom:20px;">即刻登录</h2>
+<img src="data:image/png;base64,{img_base64}" alt="QR Code" style="width:300px;height:300px;">
+<p style="color:#666;margin-top:20px;">请使用即刻 App 扫描二维码</p>
+<p style="color:#999;font-size:12px;margin-top:15px;">Session: {uuid}</p>
+</div>
+</body>
+</html>'''
+
+        html_path = '/tmp/jike_qr_login.html'
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+
+        print(f"[*] QR code saved to: {html_path}", file=sys.stderr)
+        print(f"[*] Open in browser: file://{html_path}", file=sys.stderr)
+
+        # Also print ASCII for terminal users
+        qr_ascii = qrcode.QRCode(version=1, box_size=2, border=2)
+        qr_ascii.add_data(data)
+        qr_ascii.make(fit=True)
+        qr_ascii.print_ascii(out=sys.stderr)
+
         return True
     except ImportError:
         return False
@@ -103,7 +141,7 @@ if __name__ == "__main__":
     print(f"[+] Session: {uuid}", file=sys.stderr)
 
     qr_payload = build_qr_payload(uuid)
-    if not render_qr(qr_payload):
+    if not render_qr(qr_payload, uuid):
         print("[*] Install 'qrcode' for terminal QR, or scan:", file=sys.stderr)
         print(f"    {qr_payload}", file=sys.stderr)
 
