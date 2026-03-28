@@ -9,12 +9,14 @@ Author: Claude Opus 4.5
 
 import argparse
 import json
+import os
 import sys
 from typing import Optional
 
 import requests
 
 API_BASE = "https://api.ruguoapp.com"
+REQUEST_TIMEOUT_SEC = 15
 HEADERS = {
     "Origin": "https://web.okjike.com",
     "User-Agent": (
@@ -29,25 +31,32 @@ HEADERS = {
 
 def _call(method: str, path: str, access_token: str, refresh_token: str, retry: bool = True, **kwargs):
     hdrs = {**HEADERS, "Content-Type": "application/json", "x-jike-access-token": access_token}
-    resp = requests.request(method, f"{API_BASE}{path}", headers=hdrs, **kwargs)
+    resp = requests.request(
+        method,
+        f"{API_BASE}{path}",
+        headers=hdrs,
+        timeout=REQUEST_TIMEOUT_SEC,
+        **kwargs,
+    )
 
     if resp.status_code == 401 and retry:
-        new_access, new_refresh = _refresh(refresh_token)
+        new_access, new_refresh = _refresh(refresh_token, access_token)
         return _call(method, path, new_access, new_refresh, retry=False, **kwargs)
 
     resp.raise_for_status()
     return resp.json() if resp.content else {}
 
 
-def _refresh(refresh_token: str) -> tuple:
+def _refresh(refresh_token: str, access_token: str = "") -> tuple:
     resp = requests.post(
         f"{API_BASE}/app_auth_tokens.refresh",
         headers={**HEADERS, "Content-Type": "application/json", "x-jike-refresh-token": refresh_token},
         json={},
+        timeout=REQUEST_TIMEOUT_SEC,
     )
     resp.raise_for_status()
     return (
-        resp.headers.get("x-jike-access-token", ""),
+        resp.headers.get("x-jike-access-token", access_token),
         resp.headers.get("x-jike-refresh-token", refresh_token),
     )
 
@@ -92,7 +101,7 @@ def user_posts(at: str, rt: str, username: str, load_more_key: Optional[dict] = 
     body: dict = {"username": username}
     if load_more_key:
         body["loadMoreKey"] = load_more_key
-    return _call("POST", "/1.0/personalUpdate/single", at, rt, json=body)
+    return _call("POST", "/1.0/userPost/listMore", at, rt, json=body)
 
 
 def notifications(at: str, rt: str) -> dict:
@@ -106,8 +115,20 @@ def notifications(at: str, rt: str) -> dict:
 
 def main():
     p = argparse.ArgumentParser(description="Jike API client")
-    p.add_argument("--access-token", required=True)
-    p.add_argument("--refresh-token", required=True)
+    access_env = os.getenv("JIKE_ACCESS_TOKEN") or None  # coerce "" -> None
+    refresh_env = os.getenv("JIKE_REFRESH_TOKEN") or None  # coerce "" -> None
+    p.add_argument(
+        "--access-token",
+        default=access_env,
+        required=access_env is None,
+        help="Access token (or set JIKE_ACCESS_TOKEN)",
+    )
+    p.add_argument(
+        "--refresh-token",
+        default=refresh_env,
+        required=refresh_env is None,
+        help="Refresh token (or set JIKE_REFRESH_TOKEN)",
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("feed").add_argument("--limit", type=int, default=20)
@@ -139,7 +160,7 @@ def main():
         result = dispatch[args.cmd]()
         json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
         print()
-    except requests.HTTPError as e:
+    except requests.RequestException as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)
         sys.exit(1)
 

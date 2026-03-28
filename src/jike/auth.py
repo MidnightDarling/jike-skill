@@ -13,21 +13,31 @@ from typing import Optional
 
 import requests
 
-from .types import API_BASE, DEFAULT_HEADERS, TokenPair
+from .types import API_BASE, DEFAULT_HEADERS, REQUEST_TIMEOUT_SEC, TokenPair
 
 POLL_INTERVAL_SEC = 1
 POLL_TIMEOUT_SEC = 180
+POLL_REQUEST_TIMEOUT_SEC = 60  # long-poll: server holds connection while waiting for QR scan
 
 
 def _post(path: str, headers: Optional[dict] = None, **kwargs) -> requests.Response:
     merged = {**DEFAULT_HEADERS, "Content-Type": "application/json"}
     if headers:
         merged.update(headers)
-    return requests.post(f"{API_BASE}{path}", headers=merged, **kwargs)
+    return requests.post(
+        f"{API_BASE}{path}",
+        headers=merged,
+        timeout=REQUEST_TIMEOUT_SEC,
+        **kwargs,
+    )
 
 
-def _get(path: str) -> requests.Response:
-    return requests.get(f"{API_BASE}{path}", headers={**DEFAULT_HEADERS})
+def _get(path: str, timeout: int = REQUEST_TIMEOUT_SEC) -> requests.Response:
+    return requests.get(
+        f"{API_BASE}{path}",
+        headers={**DEFAULT_HEADERS},
+        timeout=timeout,
+    )
 
 
 def create_session() -> str:
@@ -91,7 +101,10 @@ def poll_confirmation(uuid: str) -> Optional[TokenPair]:
 
     for _ in range(attempts):
         try:
-            resp = _get(f"/sessions.wait_for_confirmation?uuid={uuid}")
+            resp = _get(
+                f"/sessions.wait_for_confirmation?uuid={uuid}",
+                timeout=POLL_REQUEST_TIMEOUT_SEC,
+            )
         except requests.RequestException:
             time.sleep(POLL_INTERVAL_SEC)
             continue

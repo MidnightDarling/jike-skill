@@ -7,12 +7,13 @@ Author: Claude Opus 4.5
 
 import argparse
 import json
+import os
 import sys
 from typing import Optional
 
 import requests
 
-from .types import API_BASE, DEFAULT_HEADERS, TokenPair
+from .types import API_BASE, DEFAULT_HEADERS, REQUEST_TIMEOUT_SEC, TokenPair
 
 
 class JikeClient:
@@ -36,7 +37,11 @@ class JikeClient:
         self, method: str, path: str, retry_on_401: bool = True, **kwargs
     ) -> dict:
         resp = requests.request(
-            method, f"{API_BASE}{path}", headers=self._headers(), **kwargs
+            method,
+            f"{API_BASE}{path}",
+            headers=self._headers(),
+            timeout=REQUEST_TIMEOUT_SEC,
+            **kwargs,
         )
 
         if resp.status_code == 401 and retry_on_401:
@@ -55,6 +60,7 @@ class JikeClient:
                 "x-jike-refresh-token": self._tokens.refresh_token,
             },
             json={},
+            timeout=REQUEST_TIMEOUT_SEC,
         )
         resp.raise_for_status()
         self._tokens = TokenPair(
@@ -174,8 +180,20 @@ class JikeClient:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Jike API client")
-    parser.add_argument("--access-token", required=True)
-    parser.add_argument("--refresh-token", required=True)
+    access_env = os.getenv("JIKE_ACCESS_TOKEN") or None  # coerce "" -> None
+    refresh_env = os.getenv("JIKE_REFRESH_TOKEN") or None  # coerce "" -> None
+    parser.add_argument(
+        "--access-token",
+        default=access_env,
+        required=access_env is None,
+        help="Access token (or set JIKE_ACCESS_TOKEN)",
+    )
+    parser.add_argument(
+        "--refresh-token",
+        default=refresh_env,
+        required=refresh_env is None,
+        help="Refresh token (or set JIKE_REFRESH_TOKEN)",
+    )
 
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -244,6 +262,6 @@ def main() -> None:
         result = handler(client, args)
         json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
         print()
-    except requests.HTTPError as exc:
+    except requests.RequestException as exc:
         print(json.dumps({"error": str(exc)}), file=sys.stderr)
         sys.exit(1)

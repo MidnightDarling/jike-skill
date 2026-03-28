@@ -16,6 +16,8 @@ from typing import Optional
 import requests
 
 API_BASE = "https://api.ruguoapp.com"
+REQUEST_TIMEOUT_SEC = 15
+POLL_REQUEST_TIMEOUT_SEC = 60  # long-poll: server holds connection while waiting for QR scan
 HEADERS = {
     "Origin": "https://web.okjike.com",
     "User-Agent": (
@@ -32,6 +34,7 @@ def create_session() -> str:
     resp = requests.post(
         f"{API_BASE}/sessions.create",
         headers={**HEADERS, "Content-Type": "application/json"},
+        timeout=REQUEST_TIMEOUT_SEC,
     )
     resp.raise_for_status()
     return resp.json()["uuid"]
@@ -64,6 +67,7 @@ def poll_confirmation(uuid: str, timeout: int = 180) -> Optional[dict]:
             resp = requests.get(
                 f"{API_BASE}/sessions.wait_for_confirmation?uuid={uuid}",
                 headers=HEADERS,
+                timeout=POLL_REQUEST_TIMEOUT_SEC,
             )
         except requests.RequestException:
             time.sleep(1)
@@ -85,15 +89,16 @@ def poll_confirmation(uuid: str, timeout: int = 180) -> Optional[dict]:
     return None
 
 
-def refresh_tokens(refresh_token: str) -> dict:
+def refresh_tokens(refresh_token: str, access_token: str = "") -> dict:
     resp = requests.post(
         f"{API_BASE}/app_auth_tokens.refresh",
         headers={**HEADERS, "Content-Type": "application/json", "x-jike-refresh-token": refresh_token},
         json={},
+        timeout=REQUEST_TIMEOUT_SEC,
     )
     resp.raise_for_status()
     return {
-        "access_token": resp.headers.get("x-jike-access-token", ""),
+        "access_token": resp.headers.get("x-jike-access-token", access_token),
         "refresh_token": resp.headers.get("x-jike-refresh-token", refresh_token),
     }
 
@@ -115,7 +120,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("[+] Scan confirmed, refreshing...", file=sys.stderr)
-    tokens = refresh_tokens(tokens["refresh_token"])
+    tokens = refresh_tokens(tokens["refresh_token"], tokens["access_token"])
     print("[+] Ready", file=sys.stderr)
 
     json.dump(tokens, sys.stdout, indent=2)

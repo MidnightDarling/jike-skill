@@ -29,22 +29,29 @@ python3 scripts/auth.py
 Outputs JSON with `access_token` and `refresh_token` to stdout.
 Save the `refresh_token` for reuse (long validity, avoids re-scanning).
 
+Prefer environment variables for subsequent commands:
+
+```bash
+export JIKE_ACCESS_TOKEN="YOUR_ACCESS_TOKEN"
+export JIKE_REFRESH_TOKEN="YOUR_REFRESH_TOKEN"
+```
+
 ### 2. Interact
 
 Run `scripts/client.py` with any command:
 
 ```bash
 # Browse feed
-python3 scripts/client.py feed --access-token TOKEN --refresh-token TOKEN
+python3 scripts/client.py feed
 
 # Post
-python3 scripts/client.py post --content "Hello" --access-token TOKEN --refresh-token TOKEN
+python3 scripts/client.py post --content "Hello"
 
 # Search
-python3 scripts/client.py search --keyword "AI" --access-token TOKEN --refresh-token TOKEN
+python3 scripts/client.py search --keyword "AI"
 
 # User profile
-python3 scripts/client.py profile --username "someone" --access-token TOKEN --refresh-token TOKEN
+python3 scripts/client.py profile --username "someone"
 ```
 
 ### 3. Token Lifecycle
@@ -73,7 +80,6 @@ Run `scripts/export.py` to export a user's entire post history to Markdown:
 
 ```bash
 python3 scripts/export.py --username USERNAME \
-  --access-token TOKEN --refresh-token TOKEN \
   --output posts.md --download-images --json-dump
 ```
 

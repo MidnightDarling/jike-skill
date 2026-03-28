@@ -7,3 +7,9 @@ dist/
 .venv/
 .coverage
 .pytest_cache/
+*_jike_export.md
+*_jike_export.json
+*_images/
+posts.md
+posts.json
+security_best_practices_report.md

@@ -697,12 +697,25 @@ class TestBuildParser:
         ])
         assert args.command == "notifications"
 
-    def test_missing_access_token_raises(self):
+    def test_tokens_from_environment(self, monkeypatch):
+        monkeypatch.setenv("JIKE_ACCESS_TOKEN", "env-a")
+        monkeypatch.setenv("JIKE_REFRESH_TOKEN", "env-r")
+        parser = _build_parser()
+        args = parser.parse_args(["feed"])
+        assert args.access_token == "env-a"
+        assert args.refresh_token == "env-r"
+        assert args.command == "feed"
+
+    def test_missing_access_token_raises(self, monkeypatch):
+        monkeypatch.delenv("JIKE_ACCESS_TOKEN", raising=False)
+        monkeypatch.delenv("JIKE_REFRESH_TOKEN", raising=False)
         parser = _build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["--refresh-token", "r", "feed"])
 
-    def test_missing_refresh_token_raises(self):
+    def test_missing_refresh_token_raises(self, monkeypatch):
+        monkeypatch.delenv("JIKE_ACCESS_TOKEN", raising=False)
+        monkeypatch.delenv("JIKE_REFRESH_TOKEN", raising=False)
         parser = _build_parser()
         with pytest.raises(SystemExit):
             parser.parse_args(["--access-token", "a", "feed"])
@@ -720,7 +733,7 @@ class TestDispatch:
     def test_all_commands_registered(self):
         expected = {
             "feed", "post", "delete-post", "comment",
-            "delete-comment", "search", "profile", "notifications",
+            "delete-comment", "search", "profile", "user-posts", "notifications",
         }
         assert set(_DISPATCH.keys()) == expected
 

@@ -19,6 +19,7 @@ Author: Claude Opus 4.6
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime
@@ -29,6 +30,7 @@ from urllib.parse import urlparse
 import requests
 
 API_BASE = "https://api.ruguoapp.com"
+REQUEST_TIMEOUT_SEC = 15
 HEADERS = {
     "Origin": "https://web.okjike.com",
     "User-Agent": (
@@ -52,7 +54,7 @@ def _make_headers(access_token: str) -> dict:
     }
 
 
-def _refresh_tokens(refresh_token: str) -> tuple[str, str]:
+def _refresh_tokens(refresh_token: str, access_token: str = "") -> tuple[str, str]:
     resp = requests.post(
         f"{API_BASE}/app_auth_tokens.refresh",
         headers={
@@ -61,10 +63,11 @@ def _refresh_tokens(refresh_token: str) -> tuple[str, str]:
             "x-jike-refresh-token": refresh_token,
         },
         json={},
+        timeout=REQUEST_TIMEOUT_SEC,
     )
     resp.raise_for_status()
     return (
-        resp.headers.get("x-jike-access-token", ""),
+        resp.headers.get("x-jike-access-token", access_token),
         resp.headers.get("x-jike-refresh-token", refresh_token),
     )
 
@@ -79,10 +82,16 @@ def _api_call(
 ) -> tuple[dict, str, str]:
     """Make API call with auto-refresh. Returns (data, current_at, current_rt)."""
     hdrs = _make_headers(access_token)
-    resp = requests.request(method, f"{API_BASE}{path}", headers=hdrs, **kwargs)
+    resp = requests.request(
+        method,
+        f"{API_BASE}{path}",
+        headers=hdrs,
+        timeout=REQUEST_TIMEOUT_SEC,
+        **kwargs,
+    )
 
     if resp.status_code == 401 and retry:
-        access_token, refresh_token = _refresh_tokens(refresh_token)
+        access_token, refresh_token = _refresh_tokens(refresh_token, access_token)
         return _api_call(
             method, path, access_token, refresh_token, retry=False, **kwargs
         )
@@ -107,7 +116,7 @@ def fetch_user_posts(
     body: dict = {"username": username}
     if load_more_key:
         body["loadMoreKey"] = load_more_key
-    return _api_call("POST", "/1.0/personalUpdate/single", at, rt, json=body)
+    return _api_call("POST", "/1.0/userPost/listMore", at, rt, json=body)
 
 
 def fetch_all_posts(
@@ -340,8 +349,20 @@ def main():
         description="Export all Jike posts from a user to Markdown"
     )
     parser.add_argument("--username", required=True, help="Jike username to export")
-    parser.add_argument("--access-token", required=True)
-    parser.add_argument("--refresh-token", required=True)
+    access_env = os.getenv("JIKE_ACCESS_TOKEN") or None  # coerce "" -> None
+    refresh_env = os.getenv("JIKE_REFRESH_TOKEN") or None  # coerce "" -> None
+    parser.add_argument(
+        "--access-token",
+        default=access_env,
+        required=access_env is None,
+        help="Access token (or set JIKE_ACCESS_TOKEN)",
+    )
+    parser.add_argument(
+        "--refresh-token",
+        default=refresh_env,
+        required=refresh_env is None,
+        help="Refresh token (or set JIKE_REFRESH_TOKEN)",
+    )
     parser.add_argument(
         "--output", "-o", default=None,
         help="Output markdown file (default: <username>_jike_export.md)"
@@ -394,7 +415,7 @@ def main():
 
         export_to_markdown(all_posts, user_info, output_path, args.download_images, images_dir)
 
-    except requests.HTTPError as e:
+    except requests.RequestException as e:
         print(json.dumps({"error": str(e)}), file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:

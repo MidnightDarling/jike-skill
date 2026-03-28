@@ -7,6 +7,7 @@ Author: Claude Opus 4.5
 from dataclasses import dataclass
 
 API_BASE = "https://api.ruguoapp.com"
+REQUEST_TIMEOUT_SEC = 15
 
 DEFAULT_HEADERS = {
     "Origin": "https://web.okjike.com",

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jike-skill"
-version = "0.2.0"
+version = "0.3.0"
 description = "Jike (即刻) client for humans and AI agents — QR login, feed, posts, comments, search, export"
 readme = "README.md"
 license = "MIT"

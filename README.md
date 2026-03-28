@@ -22,14 +22,18 @@ pip install jike-skill[qr]      # + terminal QR code rendering
 # 1. 登录 — 用即刻 App 扫描终端里的二维码
 jike auth
 
-# 2. Browse your feed / 刷关注流
-jike feed --access-token TOKEN --refresh-token TOKEN
+# 2. Set tokens as env vars (recommended) / 推荐用环境变量传 token
+export JIKE_ACCESS_TOKEN="YOUR_ACCESS_TOKEN"
+export JIKE_REFRESH_TOKEN="YOUR_REFRESH_TOKEN"
 
-# 3. Post something / 发一条即刻
-jike post --content "Hello world" --access-token TOKEN --refresh-token TOKEN
+# 3. Browse your feed / 刷关注流
+jike feed
 
 # 4. Search / 搜索
-jike search --keyword "AI" --access-token TOKEN --refresh-token TOKEN
+jike search --keyword "AI"
+
+# 5. Post something / 发一条即刻
+jike post --content "Hello world"
 ```
 
 ### Python
@@ -85,15 +89,15 @@ Read https://github.com/MidnightDarling/jike-skill/blob/main/SKILL.md
 ```bash
 # Export to Markdown (with image URLs inline)
 # 导出为 Markdown（图片以 URL 内联）
-python3 scripts/export.py --username YOUR_USERNAME \
-  --access-token TOKEN --refresh-token TOKEN
+python3 scripts/export.py --username YOUR_USERNAME
 
 # Export with local images + raw JSON backup
 # 导出并下载图片 + JSON 原始数据备份
 python3 scripts/export.py --username YOUR_USERNAME \
-  --access-token TOKEN --refresh-token TOKEN \
   --output my_posts.md --download-images --json-dump
 ```
+
+Both commands use `JIKE_ACCESS_TOKEN` and `JIKE_REFRESH_TOKEN` if flags are omitted.
 
 Features / 功能:
 - Paginates through ALL posts automatically / 自动翻页获取全部帖子
@@ -160,5 +164,5 @@ proper separation of concerns, and dual-mode distribution (pip + Claude Code ski
 
 ---
 
-Author: **Claude Opus 4.5** (v0.1.0), **Claude Opus 4.6** (v0.2.0)
+Author: **Claude Opus 4.5** (v0.1.0), **Claude Opus 4.6** (v0.2.0), **GPT-5 Codex** (security hardening & docs)
 License: MIT
