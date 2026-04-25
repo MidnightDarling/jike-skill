@@ -4,19 +4,23 @@ Tests for jike.auth module.
 Covers:
 - create_session
 - build_qr_payload (URL encoding)
-- render_qr (with and without qrcode lib)
+- render_qr (qrcode missing, secure HTML output, channel independence)
+- _write_qr_html (tempfile permissions, html.escape)
 - _extract_tokens (body x-jike, body access_token, headers)
 - poll_confirmation (success, timeout, request exceptions)
 - refresh_tokens
-- authenticate (full flow)
+- authenticate (full flow, HTML cleanup on success and timeout)
 - auth CLI main
 
-Author: Claude Opus 4.5
+Author: Claude Opus 4.5 · Claude Opus 4.7 (v0.4 secure QR HTML)
 """
 
 import json
+import os
+import stat
 import sys
 import urllib.parse
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,7 +29,9 @@ import requests
 from jike.auth import (
     POLL_INTERVAL_SEC,
     POLL_TIMEOUT_SEC,
+    QRRender,
     _extract_tokens,
+    _write_qr_html,
     authenticate,
     build_qr_payload,
     create_session,
@@ -128,15 +134,95 @@ class TestBuildQrPayload:
 
 class TestRenderQr:
 
-    @patch.dict(sys.modules, {"qrcode": MagicMock()})
-    def test_returns_true_when_qrcode_available(self):
-        result = render_qr("test-data")
-        assert result is True
-
-    def test_returns_false_when_qrcode_missing(self):
+    def test_returns_empty_render_when_qrcode_missing(self):
         with patch.dict(sys.modules, {"qrcode": None}):
             result = render_qr("test-data")
-            assert result is False
+            assert isinstance(result, QRRender)
+            assert result.html_path is None
+            assert result.ascii_printed is False
+            assert result.any_visible is False
+
+    def test_returns_render_with_html_and_ascii_when_qrcode_available(self):
+        with patch.dict(sys.modules, {"qrcode": MagicMock()}):
+            result = render_qr("test-data", caption="uuid-xyz")
+
+        assert isinstance(result, QRRender)
+        assert result.ascii_printed is True
+        assert result.html_path is not None
+        try:
+            assert result.html_path.exists()
+            assert result.html_path.suffix == ".html"
+        finally:
+            result.html_path.unlink(missing_ok=True)
+
+    def test_html_failure_does_not_block_ascii(self):
+        with patch.dict(sys.modules, {"qrcode": MagicMock()}), \
+             patch("jike.auth._write_qr_html", side_effect=OSError("disk full")):
+            result = render_qr("test-data", caption="uuid-xyz")
+
+        assert result.html_path is None
+        assert result.ascii_printed is True
+        assert result.any_visible is True
+
+    def test_ascii_failure_does_not_block_html(self):
+        qr_module = MagicMock()
+        # The QRCode instance returned by qrcode.QRCode() is what owns print_ascii
+        qr_instance = MagicMock()
+        qr_instance.print_ascii.side_effect = UnicodeEncodeError(
+            "ascii", "", 0, 1, "bad encoding"
+        )
+        qr_module.QRCode.return_value = qr_instance
+
+        with patch.dict(sys.modules, {"qrcode": qr_module}):
+            result = render_qr("test-data", caption="uuid-xyz")
+
+        assert result.ascii_printed is False
+        assert result.html_path is not None
+        try:
+            assert result.html_path.exists()
+        finally:
+            result.html_path.unlink(missing_ok=True)
+
+
+class TestWriteQrHtml:
+
+    def test_creates_unique_tempfile(self):
+        path_a = _write_qr_html("AAAA", caption="cap-a")
+        path_b = _write_qr_html("BBBB", caption="cap-b")
+        try:
+            assert path_a != path_b
+            assert path_a.exists()
+            assert path_b.exists()
+        finally:
+            path_a.unlink(missing_ok=True)
+            path_b.unlink(missing_ok=True)
+
+    @pytest.mark.skipif(os.name != "posix", reason="POSIX-only mode bits")
+    def test_tempfile_is_owner_only_readable(self):
+        path = _write_qr_html("png-data", caption="cap")
+        try:
+            mode = stat.S_IMODE(path.stat().st_mode)
+            # tempfile.NamedTemporaryFile (mkstemp) creates with 0o600 on POSIX
+            assert mode == 0o600
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_caption_is_html_escaped(self):
+        path = _write_qr_html("png", caption="<script>alert('x')</script>")
+        try:
+            content = path.read_text(encoding="utf-8")
+            assert "<script>alert" not in content
+            assert "&lt;script&gt;" in content
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_path_can_be_opened_as_file_uri(self):
+        path = _write_qr_html("png", caption="cap")
+        try:
+            uri = path.as_uri()
+            assert uri.startswith("file://")
+        finally:
+            path.unlink(missing_ok=True)
 
 
 # ── _extract_tokens ─────────────────────────────────────────
@@ -506,7 +592,7 @@ class TestAuthenticate:
         token_pair,
     ):
         mock_create.return_value = "uuid-abc"
-        mock_render.return_value = True
+        mock_render.return_value = QRRender(html_path=None, ascii_printed=True)
         mock_poll.return_value = token_pair
         mock_refresh.return_value = token_pair
 
@@ -525,7 +611,7 @@ class TestAuthenticate:
         self, mock_create, mock_render, mock_poll, mock_refresh
     ):
         mock_create.return_value = "uuid-abc"
-        mock_render.return_value = True
+        mock_render.return_value = QRRender(html_path=None, ascii_printed=True)
         mock_poll.return_value = None
 
         with pytest.raises(SystemExit) as exc_info:
@@ -538,7 +624,7 @@ class TestAuthenticate:
     @patch("jike.auth.poll_confirmation")
     @patch("jike.auth.render_qr")
     @patch("jike.auth.create_session")
-    def test_prints_qr_payload_when_no_qrcode(
+    def test_prints_qr_payload_when_no_qr_visible(
         self,
         mock_create,
         mock_render,
@@ -548,7 +634,7 @@ class TestAuthenticate:
         capsys,
     ):
         mock_create.return_value = "uuid-abc"
-        mock_render.return_value = False
+        mock_render.return_value = QRRender(html_path=None, ascii_printed=False)
         mock_poll.return_value = token_pair
         mock_refresh.return_value = token_pair
 
@@ -556,6 +642,80 @@ class TestAuthenticate:
 
         captured = capsys.readouterr()
         assert "jike://page.jk/web" in captured.err
+
+    @patch("jike.auth.refresh_tokens")
+    @patch("jike.auth.poll_confirmation")
+    @patch("jike.auth.render_qr")
+    @patch("jike.auth.create_session")
+    def test_prints_html_uri_when_html_rendered(
+        self,
+        mock_create,
+        mock_render,
+        mock_poll,
+        mock_refresh,
+        token_pair,
+        capsys,
+        tmp_path,
+    ):
+        html_file = tmp_path / "qr.html"
+        html_file.write_text("<html/>", encoding="utf-8")
+        mock_create.return_value = "uuid-abc"
+        mock_render.return_value = QRRender(html_path=html_file, ascii_printed=True)
+        mock_poll.return_value = token_pair
+        mock_refresh.return_value = token_pair
+
+        authenticate()
+
+        captured = capsys.readouterr()
+        assert "QR HTML" in captured.err
+        assert html_file.as_uri() in captured.err
+
+    @patch("jike.auth.refresh_tokens")
+    @patch("jike.auth.poll_confirmation")
+    @patch("jike.auth.render_qr")
+    @patch("jike.auth.create_session")
+    def test_html_file_is_cleaned_up_on_success(
+        self,
+        mock_create,
+        mock_render,
+        mock_poll,
+        mock_refresh,
+        token_pair,
+        tmp_path,
+    ):
+        html_file = tmp_path / "qr.html"
+        html_file.write_text("<html/>", encoding="utf-8")
+        mock_create.return_value = "uuid-abc"
+        mock_render.return_value = QRRender(html_path=html_file, ascii_printed=True)
+        mock_poll.return_value = token_pair
+        mock_refresh.return_value = token_pair
+
+        authenticate()
+
+        assert not html_file.exists()
+
+    @patch("jike.auth.refresh_tokens")
+    @patch("jike.auth.poll_confirmation")
+    @patch("jike.auth.render_qr")
+    @patch("jike.auth.create_session")
+    def test_html_file_is_cleaned_up_on_timeout(
+        self,
+        mock_create,
+        mock_render,
+        mock_poll,
+        mock_refresh,
+        tmp_path,
+    ):
+        html_file = tmp_path / "qr.html"
+        html_file.write_text("<html/>", encoding="utf-8")
+        mock_create.return_value = "uuid-abc"
+        mock_render.return_value = QRRender(html_path=html_file, ascii_printed=True)
+        mock_poll.return_value = None  # timeout
+
+        with pytest.raises(SystemExit):
+            authenticate()
+
+        assert not html_file.exists()
 
 
 # ── auth main (CLI) ────────────────────────────────────────

@@ -1,25 +1,31 @@
 # jike-skill
 
 Jike (即刻) client for humans and AI agents.
-One-command export of your entire Jike history to Markdown.
+QR login (browser HTML or terminal ASCII), full feed/post/comment/search
+API, and one-command export of your entire Jike history to Markdown.
 
 即刻社交网络客户端 — 给人用，也给 AI agent 用。
-一行命令导出你的全部即刻历史。
+扫码登录支持浏览器 HTML 与终端 ASCII 双通道；一行命令导出全部即刻历史。
+
+**Current version**: `0.4.0` — see [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Install / 安装
 
 ```bash
 pip install jike-skill          # core
-pip install jike-skill[qr]      # + terminal QR code rendering
+pip install jike-skill[qr]      # + browser HTML & terminal ASCII QR rendering
 ```
+
+The `[qr]` extra pulls in `qrcode[pil]`. Without it, `jike auth` falls
+back to printing the raw `jike://` URL for manual scanning.
 
 ## Quick Start / 快速开始
 
 ### CLI
 
 ```bash
-# 1. Login — scan the QR code with Jike app
-# 1. 登录 — 用即刻 App 扫描终端里的二维码
+# 1. Login — open the browser HTML QR (or scan the ASCII fallback in the terminal)
+# 1. 登录 — 浏览器打开 HTML 二维码（或扫终端里的 ASCII 备用 QR）
 jike auth
 
 # 2. Set tokens as env vars (recommended) / 推荐用环境变量传 token
@@ -118,6 +124,25 @@ No passwords. Jike uses QR-code scan authentication (same as their web client):
 4. Server returns `access_token` + `refresh_token`
 5. `refresh_token` has long validity — save it, skip QR next time
 
+### QR rendering (v0.4.0+)
+
+When `qrcode[pil]` is installed, the QR is rendered through **two
+independent channels** — either may individually fail without breaking
+the other:
+
+- **Browser HTML** — a self-contained HTML page (PNG embedded as
+  base64) is written to an unpredictable tempfile path with `0o600`
+  permissions on POSIX, and its `file://` URI is printed to stderr.
+  The file is removed automatically when the auth flow returns.
+- **Terminal ASCII** — the same QR is also printed to stderr for
+  terminals that can render it.
+
+If `qrcode` is not installed, the raw `jike://` URL is printed instead
+so it can be scanned out-of-band.
+
+二选一，互不影响：装了 `qrcode` 就同时给浏览器 HTML 与终端 ASCII；
+没装就直接打印 `jike://` 原始链接，手动扫描。
+
 ## Architecture / 项目结构
 
 ```
@@ -162,7 +187,17 @@ proper separation of concerns, and dual-mode distribution (pip + Claude Code ski
 原作者通过抓包逆向工程了即刻 Web 端的 API，为本项目提供了关键的接口研究基础。
 在此基础上，我们用类型化 Python 包、关注点分离和双模式分发（pip + Claude Code skill）重新实现了全部功能。
 
+Thanks also to [@imHw](https://github.com/imHw) for opening
+[PR #1](https://github.com/MidnightDarling/jike-skill/pull/1), which
+surfaced the terminal-QR truncation issue that motivated the v0.4.0
+browser-HTML rendering path.
+
 ---
 
-Author: **Claude Opus 4.5** (v0.1.0), **Claude Opus 4.6** (v0.2.0), **GPT-5 Codex** (security hardening & docs)
+Authors:
+- **Claude Opus 4.5** — v0.1.0 (initial release), v0.2.0 (export)
+- **Claude Opus 4.6** — v0.2.1 (API migration)
+- **GPT-5 Codex** — v0.3.0 (security hardening, env var tokens, timeouts)
+- **Claude Opus 4.7** — v0.4.0 (secure browser-HTML QR login)
+
 License: MIT

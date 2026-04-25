@@ -2,15 +2,21 @@
 """
 Jike QR Authentication (standalone)
 Run directly: python3 scripts/auth.py
-No pip install required — only needs `requests`.
+No pip install required — only needs `requests` (and optional `qrcode[pil]`).
 
-Author: Claude Opus 4.5
+Author: Claude Opus 4.5 (v0.1) · Claude Opus 4.7 (v0.4 secure QR HTML)
 """
 
+import base64
+import html
 import json
 import sys
+import tempfile
 import time
 import urllib.parse
+from dataclasses import dataclass
+from io import BytesIO
+from pathlib import Path
 from typing import Optional
 
 import requests
@@ -28,6 +34,47 @@ HEADERS = {
     "Accept": "application/json, text/plain, */*",
     "DNT": "1",
 }
+
+QR_VERSION = 1
+QR_BOX_SIZE = 10
+QR_BORDER = 2
+
+_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jike Login QR</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+          display: flex; flex-direction: column; align-items: center;
+          padding: 32px; background: #fafafa; color: #222; }}
+  img  {{ width: 320px; height: 320px; image-rendering: pixelated;
+          border: 1px solid #eee; }}
+  p    {{ margin: 12px 0; font-size: 14px; color: #666; }}
+  code {{ background: #eee; padding: 2px 6px; border-radius: 3px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }}
+</style>
+</head>
+<body>
+  <h2>Scan with Jike app</h2>
+  <img alt="Jike login QR" src="data:image/png;base64,{png_b64}">
+  <p>Session: <code>{caption}</code></p>
+  <p>This page is only valid until the auth flow completes.</p>
+</body>
+</html>
+"""
+
+
+@dataclass(frozen=True)
+class QRRender:
+    """Outcome of rendering a QR code through both available channels."""
+
+    html_path: Optional[Path]
+    ascii_printed: bool
+
+    @property
+    def any_visible(self) -> bool:
+        return self.html_path is not None or self.ascii_printed
 
 
 def create_session() -> str:
@@ -49,16 +96,72 @@ def build_qr_payload(uuid: str) -> str:
     )
 
 
-def render_qr(data: str) -> bool:
+def _build_qr(data: str):
+    """Build a QRCode object reusable for both image and ASCII output.
+
+    Caller is responsible for handling ImportError if `qrcode` is not installed.
+    """
+    import qrcode  # local import: optional dependency
+
+    qr = qrcode.QRCode(version=QR_VERSION, box_size=QR_BOX_SIZE, border=QR_BORDER)
+    qr.add_data(data)
+    qr.make(fit=True)
+    return qr
+
+
+def _qr_to_png_base64(qr) -> str:
+    buf = BytesIO()
+    qr.make_image(fill_color="black", back_color="white").save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def _write_qr_html(png_b64: str, caption: str = "") -> Path:
+    """Write the QR HTML page to a unique tempfile (mode 0o600 on POSIX)."""
+    f = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        prefix="jike_qr_",
+        suffix=".html",
+        delete=False,
+    )
+    path = Path(f.name)
     try:
-        import qrcode
-        qr = qrcode.QRCode(border=1)
-        qr.add_data(data)
-        qr.make(fit=True)
-        qr.print_ascii(out=sys.stderr)
-        return True
+        with f:
+            f.write(
+                _HTML_TEMPLATE.format(
+                    png_b64=png_b64,
+                    caption=html.escape(caption),
+                )
+            )
+    except OSError:
+        path.unlink(missing_ok=True)
+        raise
+    return path
+
+
+def render_qr(data: str, caption: str = "") -> QRRender:
+    """Render the QR through both an HTML file and a terminal ASCII view."""
+    try:
+        qr = _build_qr(data)
     except ImportError:
-        return False
+        return QRRender(html_path=None, ascii_printed=False)
+
+    html_path: Optional[Path] = None
+    try:
+        png_b64 = _qr_to_png_base64(qr)
+        html_path = _write_qr_html(png_b64, caption=caption)
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"[!] QR HTML generation skipped: {exc}", file=sys.stderr)
+        html_path = None
+
+    ascii_printed = False
+    try:
+        qr.print_ascii(out=sys.stderr)
+        ascii_printed = True
+    except (OSError, UnicodeEncodeError) as exc:
+        print(f"[!] QR ASCII rendering skipped: {exc}", file=sys.stderr)
+
+    return QRRender(html_path=html_path, ascii_printed=ascii_printed)
 
 
 def poll_confirmation(uuid: str, timeout: int = 180) -> Optional[dict]:
@@ -103,17 +206,37 @@ def refresh_tokens(refresh_token: str, access_token: str = "") -> dict:
     }
 
 
+def _cleanup_qr_html(path: Optional[Path]) -> None:
+    if path is None:
+        return
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 if __name__ == "__main__":
     uuid = create_session()
     print(f"[+] Session: {uuid}", file=sys.stderr)
 
     qr_payload = build_qr_payload(uuid)
-    if not render_qr(qr_payload):
-        print("[*] Install 'qrcode' for terminal QR, or scan:", file=sys.stderr)
+    rendered = render_qr(qr_payload, caption=uuid)
+
+    if rendered.html_path is not None:
+        print(
+            f"[+] QR HTML (open in browser): {rendered.html_path.as_uri()}",
+            file=sys.stderr,
+        )
+    if not rendered.any_visible:
+        print("[*] Install 'qrcode' for terminal/HTML QR, or scan manually:", file=sys.stderr)
         print(f"    {qr_payload}", file=sys.stderr)
 
     print("[*] Waiting for scan...", file=sys.stderr)
-    tokens = poll_confirmation(uuid)
+
+    try:
+        tokens = poll_confirmation(uuid)
+    finally:
+        _cleanup_qr_html(rendered.html_path)
 
     if not tokens:
         print("[!] Timeout", file=sys.stderr)

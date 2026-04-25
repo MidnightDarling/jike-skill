@@ -20,11 +20,21 @@ comment, search, and check notifications. Auth is QR scan (no passwords).
 
 ### 1. Authenticate
 
-Run `scripts/auth.py` — user scans the terminal QR with Jike app:
+Run `scripts/auth.py` — user scans the QR with Jike app:
 
 ```bash
 python3 scripts/auth.py
 ```
+
+QR rendering depends on the optional `qrcode[pil]` extra:
+
+- **If `qrcode` is installed**: a temporary HTML page (PNG embedded as
+  base64) is written to a unique tempfile and its `file://` URI is
+  printed — open it in a browser to scan. The same QR is also rendered
+  as ASCII to stderr as a fallback. The HTML file is created with mode
+  `0o600` and **automatically removed** when the auth flow exits.
+- **If `qrcode` is not installed**: the raw `jike://` URL is printed for
+  manual scanning. Install with `pip install jike-skill[qr]`.
 
 Outputs JSON with `access_token` and `refresh_token` to stdout.
 Save the `refresh_token` for reuse (long validity, avoids re-scanning).
@@ -115,3 +125,6 @@ see [references/api.md](references/api.md).
 - No password auth — QR scan only (same as Jike web)
 - All requests require `Origin: https://web.okjike.com` header
 - Tokens auto-refresh; only `refresh_token` needs persistence
+- QR HTML page is written to an unpredictable tempfile path (no symlink
+  TOCTOU window), with `0o600` permissions on POSIX, and is removed
+  before the auth flow returns. Caption text is HTML-escaped.

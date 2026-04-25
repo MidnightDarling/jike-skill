@@ -13,3 +13,13 @@ dist/
 posts.md
 posts.json
 security_best_practices_report.md
+
+# macOS resource forks (appear when working tree lives on exFAT/SMB)
+.DS_Store
+._*
+
+# Session memory buffer
+.remember/
+
+# Stray QR HTML tempfiles (should not exist outside tempdir, but be safe)
+jike_qr_*.html

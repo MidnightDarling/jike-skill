@@ -2,6 +2,56 @@
 
 All notable changes to jike-skill will be documented in this file.
 
+## [0.4.0] - 2026-04-25
+
+### Added
+
+- **Browser-friendly QR login**: when `qrcode[pil]` is installed, a
+  self-contained HTML page (PNG embedded as base64) is written and its
+  `file://` URI is printed — useful when terminal width truncates the
+  ASCII QR. ASCII output remains available as a fallback.
+- **`QRRender` dataclass**: `render_qr()` now returns a structured
+  result describing which channel(s) succeeded (`html_path`,
+  `ascii_printed`).
+- New unit tests covering QR HTML mode bits, HTML cleanup on success
+  and timeout, caption HTML-escaping, and channel independence
+  (HTML failure does not block ASCII and vice versa).
+
+### Security
+
+- **QR HTML uses an unpredictable tempfile path** via
+  `tempfile.NamedTemporaryFile`, eliminating the symlink/TOCTOU window
+  that a fixed `/tmp/jike_qr_login.html` would expose on multi-user
+  hosts.
+- **Tempfile is created with `0o600`** mode on POSIX so other local
+  users cannot read the live login QR during the scan window.
+- **`try / finally` cleanup**: the QR HTML file is unlinked when the
+  auth flow returns (success, timeout, or exception).
+- **HTML-escape user-controlled caption** before interpolation, so a
+  malformed UUID cannot break out of the HTML page.
+
+### Fixed
+
+- **Robust error handling in `render_qr`**: `OSError`,
+  `UnicodeEncodeError`, and other I/O failures are caught per-channel
+  and downgraded to a structured fallback instead of crashing the
+  entire auth flow.
+- **Cross-platform tempdir**: HTML page now respects
+  `tempfile.gettempdir()` instead of hard-coding `/tmp`, so the auth
+  flow no longer breaks on Windows.
+- **Single QR matrix**: HTML and ASCII reuse a single `QRCode`
+  instance instead of building two with mismatched `box_size` settings.
+
+### Changed
+
+- Plugin metadata (`.claude-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json`) bumped from `0.1.0` to `0.4.0`,
+  closing the long-standing drift behind `pyproject.toml`.
+- Package `__version__` and `__all__` updated to expose `render_qr`
+  and `QRRender`.
+- `.gitignore` now excludes macOS `._*` resource forks that appear when
+  the working tree lives on an exFAT/SMB volume.
+
 ## [0.3.0] - 2026-03-28
 
 ### Added
