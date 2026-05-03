@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "jike",
-      "source": ".",
+      "source": "./",
       "description": "Jike (即刻) — QR login (browser HTML or terminal ASCII), feed, posts, comments, search, full-history export, notifications",
       "version": "0.4.0",
       "category": "social",

@@ -58,6 +58,26 @@ results = client.search(keyword="AI")
 profile = client.profile(username="someone")
 ```
 
+### Codex Plugin
+
+Codex does not automatically use a public repository just because it contains a
+`SKILL.md`. Add this repository as a plugin marketplace, restart Codex, then
+install or enable the plugin from `/plugins`.
+
+```bash
+# One-time setup: add this public repository as a Codex plugin marketplace
+codex plugin marketplace add MidnightDarling/jike-skill
+```
+
+After restarting Codex:
+
+```text
+/plugins
+```
+
+Choose **Jike Skill Codex Plugins** and confirm that **Jike** is installed and
+enabled. Codex then loads the packaged skill from `skills/jike/SKILL.md`.
+
 ### Claude Code Plugin
 
 ```bash
@@ -73,7 +93,9 @@ git clone https://github.com/MidnightDarling/jike-skill.git ~/.claude/skills/jik
 Read https://github.com/MidnightDarling/jike-skill/blob/main/SKILL.md
 ```
 
-三种方式都行：插件一键装、手动复制文件夹到 `~/.claude/skills/`、或直接发链接临时用。
+Codex 需要先把公开仓库加为 plugin marketplace，再在 `/plugins` 里安装或启用；
+Claude Code 则可以用插件一键装、手动复制文件夹到 `~/.claude/skills/`、或直接发
+链接临时用。
 
 ## All Commands / 全部命令
 
@@ -146,8 +168,8 @@ so it can be scanned out-of-band.
 ## Architecture / 项目结构
 
 ```
-jike-skill/                    # Copy this whole folder to ~/.claude/skills/jike/
-├── SKILL.md                   # Skill definition (Claude reads this)
+jike-skill/
+├── SKILL.md                   # Legacy root skill definition
 ├── CHANGELOG.md               # Version history
 ├── scripts/                   # Standalone scripts (agent runs these)
 │   ├── auth.py                # QR authentication
@@ -155,9 +177,16 @@ jike-skill/                    # Copy this whole folder to ~/.claude/skills/jike
 │   └── export.py              # Full history export to Markdown
 ├── references/
 │   └── api.md                 # API endpoint reference (loaded on demand)
+├── .agents/plugins/
+│   └── marketplace.json       # Codex repo marketplace catalog
+├── .codex-plugin/
+│   └── plugin.json            # Codex plugin manifest
 ├── .claude-plugin/            # Plugin marketplace metadata
 │   ├── marketplace.json       # Marketplace catalog
 │   └── plugin.json            # Plugin manifest
+├── skills/
+│   └── jike/
+│       └── SKILL.md           # Codex packaged skill entrypoint
 ├── pyproject.toml             # Python packaging (pip installable)
 └── src/jike/                  # Python package (for pip users)
     ├── __init__.py
@@ -169,7 +198,7 @@ jike-skill/                    # Copy this whole folder to ~/.claude/skills/jike
 
 ## Design / 设计
 
-- **Dual-mode** — Works as a `pip install` package AND a Claude Code skill
+- **Dual-mode** — Works as a `pip install` package and as an AI-agent plugin
 - **Frozen dataclasses** — `TokenPair` is immutable; refresh returns new instances
 - **Auto-retry on 401** — Token refresh is transparent to the caller
 - **Progressive disclosure** — SKILL.md is lean; API details in `references/api.md`

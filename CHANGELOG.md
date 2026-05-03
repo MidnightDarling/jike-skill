@@ -2,6 +2,23 @@
 
 All notable changes to jike-skill will be documented in this file.
 
+## Unreleased
+
+### Added
+
+- Codex plugin packaging via `.codex-plugin/plugin.json`,
+  `.agents/plugins/marketplace.json`, and `skills/jike/SKILL.md`, so the public
+  repository can be added as a Codex plugin marketplace. The Codex marketplace
+  entry is marked `INSTALLED_BY_DEFAULT` for direct use after the marketplace is
+  added.
+
+### Changed
+
+- README now documents the Codex marketplace install flow separately from the
+  Claude Code plugin flow.
+- `.claude-plugin/marketplace.json` now uses a `./`-prefixed source path for
+  compatibility with Codex marketplace path rules.
+
 ## [0.4.0] - 2026-04-25
 
 ### Added
