@@ -1,0 +1,47 @@
+{
+  "name": "jike",
+  "version": "0.4.0",
+  "description": "Jike (即刻) social network client for Codex agents: QR login, feed, posts, comments, search, notifications, and full-history export.",
+  "author": {
+    "name": "Alice & Claude Opus 4.5, 4.6, 4.7",
+    "email": "noreply@anthropic.com"
+  },
+  "homepage": "https://github.com/MidnightDarling/jike-skill",
+  "repository": "https://github.com/MidnightDarling/jike-skill",
+  "license": "MIT",
+  "keywords": [
+    "jike",
+    "social",
+    "chinese-social",
+    "qr-login",
+    "export",
+    "codex-plugin"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Jike",
+    "shortDescription": "Jike client for QR login, feeds, posts, search, and export.",
+    "longDescription": "Use Jike to authenticate by QR scan, browse feeds, create and delete posts, manage comments, search content or users, check notifications, and export complete Jike post histories from Codex.",
+    "developerName": "MidnightDarling",
+    "category": "Social",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Generate"
+    ],
+    "websiteURL": "https://github.com/MidnightDarling/jike-skill",
+    "defaultPrompt": [
+      "Use Jike to authenticate with a QR scan and read my following feed.",
+      "Use Jike to search posts about AI and summarise the results.",
+      "Use Jike to export a user's full post history to Markdown."
+    ],
+    "brandColor": "#F6C945",
+    "screenshots": []
+  },
+  "contributors": [
+    "Alice",
+    "Claude Opus 4.5",
+    "Claude Opus 4.6",
+    "Claude Opus 4.7"
+  ]
+}
