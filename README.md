@@ -221,12 +221,51 @@ Thanks also to [@imHw](https://github.com/imHw) for opening
 surfaced the terminal-QR truncation issue that motivated the v0.4.0
 browser-HTML rendering path.
 
+## Contributors / 贡献者
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/MidnightDarling">
+        <img src="https://github.com/MidnightDarling.png?size=96" width="64" height="64" alt="MidnightDarling avatar"><br>
+        <sub><b>MidnightDarling</b></sub>
+      </a><br>
+      <sub>Owner and steward</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/claude">
+        <img src="https://github.com/claude.png?size=96" width="64" height="64" alt="Claude avatar"><br>
+        <sub><b>Claude Opus</b></sub>
+      </a><br>
+      <sub>Core package and QR flow</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/codex">
+        <img src="https://github.com/codex.png?size=96" width="64" height="64" alt="GPT-5 avatar"><br>
+        <sub><b>GPT-5</b></sub>
+      </a><br>
+      <sub>Security hardening and Codex plugin packaging</sub>
+    </td>
+    <td align="center">
+      <a href="https://github.com/imHw">
+        <img src="https://github.com/imHw.png?size=96" width="64" height="64" alt="imHw avatar"><br>
+        <sub><b>imHw</b></sub>
+      </a><br>
+      <sub>PR #1 issue discovery</sub>
+    </td>
+  </tr>
+</table>
+
+GitHub's external Contributors panel is driven by commit metadata. The
+GPT-authored plugin work uses `GPT-5 <codex@openai.com>`, which resolves to
+the [`@codex`](https://github.com/codex) GitHub avatar.
+
 ---
 
 Authors:
 - **Claude Opus 4.5** — v0.1.0 (initial release), v0.2.0 (export)
 - **Claude Opus 4.6** — v0.2.1 (API migration)
-- **GPT-5 Codex** — v0.3.0 (security hardening, env var tokens, timeouts)
+- **GPT-5** — v0.3.0 (security hardening, env var tokens, timeouts)
 - **Claude Opus 4.7** — v0.4.0 (secure browser-HTML QR login)
 
 License: MIT

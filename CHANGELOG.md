@@ -16,6 +16,8 @@ All notable changes to jike-skill will be documented in this file.
 
 - README now documents the Codex marketplace install flow separately from the
   Claude Code plugin flow.
+- README now includes avatar-based contributor recognition, including the
+  `@codex` GitHub identity for GPT-authored plugin work.
 - `.claude-plugin/marketplace.json` now uses a `./`-prefixed source path for
   compatibility with Codex marketplace path rules.
 
