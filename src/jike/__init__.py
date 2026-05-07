@@ -16,4 +16,4 @@ __all__ = [
     "refresh_tokens",
     "render_qr",
 ]
-__version__ = "0.4.0"
+__version__ = "0.4.1"

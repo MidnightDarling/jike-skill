@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Jike Skill Icon</title>
+  <desc id="desc">A square golden-black portal icon for the Jike Codex plugin, combining QR scan fragments, a speech field, and an agent doorway.</desc>
+  <defs>
+    <linearGradient id="bg" x1="64" y1="24" x2="448" y2="488" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17120A"/>
+      <stop offset="0.46" stop-color="#22180A"/>
+      <stop offset="1" stop-color="#060708"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="45%" cy="34%" r="58%">
+      <stop offset="0" stop-color="#FFF4B0"/>
+      <stop offset="0.32" stop-color="#F7C948"/>
+      <stop offset="0.72" stop-color="#D98A16"/>
+      <stop offset="1" stop-color="#7A3F07"/>
+    </radialGradient>
+    <linearGradient id="gate" x1="168" y1="84" x2="344" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF7C9"/>
+      <stop offset="0.42" stop-color="#F6C945"/>
+      <stop offset="1" stop-color="#C86F17"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="126" y1="128" x2="388" y2="386" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2B1907"/>
+      <stop offset="1" stop-color="#090705"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.98  0 1 0 0 0.68  0 0 1 0 0.16  0 0 0 0.85 0" result="gold"/>
+      <feMerge>
+        <feMergeNode in="gold"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="round">
+      <rect width="512" height="512" rx="96"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#round)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <circle cx="236" cy="178" r="188" fill="url(#sun)" opacity="0.92"/>
+    <circle cx="236" cy="178" r="124" fill="#FFDF68" opacity="0.32"/>
+    <path d="M0 386 C88 334 142 360 220 328 C310 292 362 232 512 260 L512 512 L0 512 Z" fill="#060708" opacity="0.72"/>
+
+    <g opacity="0.34" stroke="#FFE08A" stroke-width="2" fill="none">
+      <path d="M82 119 H144 V181"/>
+      <path d="M430 119 H368 V181"/>
+      <path d="M82 393 H144 V331"/>
+      <path d="M430 393 H368 V331"/>
+      <path d="M104 256 H158"/>
+      <path d="M354 256 H408"/>
+      <path d="M256 76 V132"/>
+      <path d="M256 380 V436"/>
+    </g>
+
+    <g filter="url(#glow)">
+      <path d="M164 138 C164 114 184 94 208 94 H304 C328 94 348 114 348 138 V306 C348 330 328 350 304 350 H279 L240 394 C235 400 225 396 226 387 L230 350 H208 C184 350 164 330 164 306 Z" fill="url(#gate)"/>
+      <path d="M190 150 C190 133 204 119 221 119 H291 C308 119 322 133 322 150 V291 C322 308 308 322 291 322 H257 L231 351 L234 322 H221 C204 322 190 308 190 291 Z" fill="url(#ink)"/>
+    </g>
+
+    <g fill="#F8CA44">
+      <rect x="214" y="146" width="42" height="42" rx="9"/>
+      <rect x="266" y="146" width="18" height="18" rx="4"/>
+      <rect x="292" y="146" width="18" height="42" rx="5"/>
+      <rect x="214" y="198" width="18" height="18" rx="4"/>
+      <rect x="240" y="198" width="70" height="18" rx="5"/>
+      <rect x="214" y="224" width="44" height="44" rx="9"/>
+      <rect x="268" y="224" width="18" height="18" rx="4"/>
+      <rect x="292" y="248" width="18" height="44" rx="5"/>
+      <rect x="240" y="276" width="46" height="18" rx="5"/>
+      <rect x="214" y="276" width="18" height="18" rx="4"/>
+    </g>
+
+    <g fill="#FFF4BD">
+      <rect x="226" y="158" width="18" height="18" rx="4"/>
+      <rect x="226" y="236" width="20" height="20" rx="4"/>
+      <rect x="266" y="172" width="18" height="18" rx="4"/>
+      <rect x="266" y="250" width="18" height="18" rx="4"/>
+      <rect x="292" y="224" width="18" height="18" rx="4"/>
+    </g>
+
+    <g stroke="#FFF2A8" stroke-linecap="round" stroke-width="7" opacity="0.86">
+      <path d="M150 98 L122 70"/>
+      <path d="M362 98 L390 70"/>
+      <path d="M256 72 L256 40"/>
+      <path d="M118 210 L82 202"/>
+      <path d="M394 210 L430 202"/>
+    </g>
+
+    <g fill="#F6C945" opacity="0.96">
+      <rect x="92" y="280" width="22" height="22" rx="6"/>
+      <rect x="120" y="310" width="14" height="14" rx="4"/>
+      <rect x="390" y="306" width="24" height="24" rx="7"/>
+      <rect x="362" y="282" width="14" height="14" rx="4"/>
+      <rect x="94" y="374" width="14" height="14" rx="4"/>
+      <rect x="404" y="386" width="16" height="16" rx="4"/>
+    </g>
+
+    <path d="M118 430 C170 458 248 470 318 448 C372 431 407 398 428 360" fill="none" stroke="#F6C945" stroke-width="8" stroke-linecap="round" opacity="0.72"/>
+    <path d="M132 429 C190 442 266 438 319 415" fill="none" stroke="#FFF0A1" stroke-width="3" stroke-linecap="round" opacity="0.64"/>
+  </g>
+</svg>

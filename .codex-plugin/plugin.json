@@ -1,6 +1,6 @@
 {
   "name": "jike",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Jike (即刻) social network client for Codex agents: QR login, feed, posts, comments, search, notifications, and full-history export.",
   "author": {
     "name": "Alice & Claude Opus 4.5, 4.6, 4.7",
@@ -30,6 +30,8 @@
       "Generate"
     ],
     "websiteURL": "https://github.com/MidnightDarling/jike-skill",
+    "composerIcon": "./assets/app-icon.svg",
+    "logo": "./assets/app-icon.svg",
     "defaultPrompt": [
       "Use Jike to authenticate with a QR scan and read my following feed.",
       "Use Jike to search posts about AI and summarise the results.",

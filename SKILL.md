@@ -18,6 +18,28 @@ comment, search, and check notifications. Auth is QR scan (no passwords).
 
 ## Process
 
+### 0. Install As A Codex Plugin
+
+When the user asks how to install or enable this repository for Codex, use the
+Codex plugin marketplace route:
+
+```bash
+codex plugin marketplace add MidnightDarling/jike-skill
+codex plugin marketplace upgrade jike-skill
+```
+
+Then ask the user to fully restart Codex, open `/plugins`, and confirm that
+`Jike` from `jike-skill` is installed and enabled. A successful Codex install
+loads the packaged skill from:
+
+```text
+~/.codex/plugins/cache/jike-skill/jike/<version>/skills/jike/SKILL.md
+```
+
+Do not rely on this root `SKILL.md` alone for Codex plugin discovery. It is
+useful documentation, but Codex loads the installed plugin copy from its
+marketplace cache.
+
 ### 1. Authenticate
 
 Run `scripts/auth.py` — user scans the QR with Jike app:

@@ -7,7 +7,7 @@ API, and one-command export of your entire Jike history to Markdown.
 即刻社交网络客户端 — 给人用，也给 AI agent 用。
 扫码登录支持浏览器 HTML 与终端 ASCII 双通道；一行命令导出全部即刻历史。
 
-**Current version**: `0.4.0` — see [CHANGELOG.md](CHANGELOG.md) for details.
+**Current version**: `0.4.1` — see [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Install / 安装
 
@@ -184,6 +184,8 @@ jike-skill/
 ├── .claude-plugin/            # Plugin marketplace metadata
 │   ├── marketplace.json       # Marketplace catalog
 │   └── plugin.json            # Plugin manifest
+├── assets/
+│   └── app-icon.svg           # Codex plugin icon
 ├── skills/
 │   └── jike/
 │       └── SKILL.md           # Codex packaged skill entrypoint
@@ -228,5 +230,6 @@ Authors:
 - **Claude Opus 4.6** — v0.2.1 (API migration)
 - **GPT-5** — v0.3.0 (security hardening, env var tokens, timeouts)
 - **Claude Opus 4.7** — v0.4.0 (secure browser-HTML QR login)
+- **GPT-5.5** — v0.4.1 (Codex install guidance and SVG app icon)
 
 License: MIT

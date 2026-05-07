@@ -27,6 +27,27 @@ When working from a plugin checkout, resolve bundled files from the plugin root:
 If this skill file is the current reference point, the plugin root is two
 directories above it.
 
+## Install This Plugin In Codex
+
+When the user asks how to install or enable this skill for Codex, use the
+Codex plugin marketplace route:
+
+```bash
+codex plugin marketplace add MidnightDarling/jike-skill
+codex plugin marketplace upgrade jike-skill
+```
+
+Then ask the user to fully restart Codex, open `/plugins`, and confirm that
+`Jike` from `jike-skill` is installed and enabled. In a running Codex
+environment, verify success by checking that the installed skill exists under:
+
+```text
+~/.codex/plugins/cache/jike-skill/jike/<version>/skills/jike/SKILL.md
+```
+
+Do not treat the public repository's root `SKILL.md` as enough for Codex
+plugin discovery. Codex loads the packaged plugin from the marketplace cache.
+
 ## Authenticate
 
 Prefer the installed CLI when available:
