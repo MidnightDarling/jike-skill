@@ -18,6 +18,8 @@ All notable changes to jike-skill will be documented in this file.
   Claude Code plugin flow.
 - `.claude-plugin/marketplace.json` now uses a `./`-prefixed source path for
   compatibility with Codex marketplace path rules.
+- `.agents/plugins/marketplace.json` now uses a Git-backed root source for
+  Codex, avoiding the empty local-path resolution produced by `./`.
 
 ## [0.4.0] - 2026-04-25
 
