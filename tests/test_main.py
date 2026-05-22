@@ -8,8 +8,7 @@ Covers:
 Author: Claude Opus 4.5
 """
 
-import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -32,35 +31,40 @@ class TestMainDispatch:
     def test_auth_command_dispatches_to_auth_main(self):
         with patch("jike.auth.main") as mock_auth_main:
             main()
-            mock_auth_main.assert_called_once()
+            mock_auth_main.assert_called_once_with([])
 
     @patch("jike.__main__.sys.argv", ["jike", "auth", "--extra-flag"])
     def test_auth_strips_auth_from_argv(self):
         with patch("jike.auth.main") as mock_auth_main:
             main()
-            # After stripping, sys.argv should be ["jike", "--extra-flag"]
-            mock_auth_main.assert_called_once()
+            mock_auth_main.assert_called_once_with(["--extra-flag"])
 
     @patch("jike.__main__.sys.argv", ["jike", "feed"])
     def test_non_auth_dispatches_to_client_main(self):
-        with patch("jike.client.main") as mock_client_main:
+        with patch("jike.client_cli.main") as mock_client_main:
             main()
-            mock_client_main.assert_called_once()
+            mock_client_main.assert_called_once_with(["feed"])
 
     @patch("jike.__main__.sys.argv", ["jike", "search"])
     def test_search_dispatches_to_client_main(self):
-        with patch("jike.client.main") as mock_client_main:
+        with patch("jike.client_cli.main") as mock_client_main:
             main()
-            mock_client_main.assert_called_once()
+            mock_client_main.assert_called_once_with(["search"])
 
     @patch("jike.__main__.sys.argv", ["jike", "post"])
     def test_post_dispatches_to_client_main(self):
-        with patch("jike.client.main") as mock_client_main:
+        with patch("jike.client_cli.main") as mock_client_main:
             main()
-            mock_client_main.assert_called_once()
+            mock_client_main.assert_called_once_with(["post"])
 
     @patch("jike.__main__.sys.argv", ["jike", "profile"])
     def test_profile_dispatches_to_client_main(self):
-        with patch("jike.client.main") as mock_client_main:
+        with patch("jike.client_cli.main") as mock_client_main:
             main()
-            mock_client_main.assert_called_once()
+            mock_client_main.assert_called_once_with(["profile"])
+
+    @patch("jike.__main__.sys.argv", ["jike", "export", "--username", "alice"])
+    def test_export_dispatches_to_export_main(self):
+        with patch("jike.export.main") as mock_export_main:
+            main()
+            mock_export_main.assert_called_once_with(["--username", "alice"])

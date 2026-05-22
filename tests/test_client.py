@@ -14,14 +14,14 @@ Author: Claude Opus 4.5
 """
 
 import json
-import sys
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
-from jike.client import JikeClient, _build_parser, _DISPATCH, main
-from jike.types import API_BASE, TokenPair
+from jike.client import JikeClient
+from jike.client_cli import _DISPATCH, _build_parser, main
+from jike.types import TokenPair
 
 
 # ── JikeClient construction ────────────────────────────────
@@ -159,6 +159,24 @@ class TestRequestRetry:
         result = client._request("DELETE", "/test")
 
         assert result == {}
+
+    @patch("jike.client.time.sleep")
+    @patch("jike.client.requests.request")
+    def test_retries_once_on_429_retry_after(self, mock_request, mock_sleep, token_pair):
+        mock_429 = MagicMock()
+        mock_429.status_code = 429
+        mock_429.headers = {"Retry-After": "2"}
+        mock_200 = MagicMock()
+        mock_200.status_code = 200
+        mock_200.content = b'{"ok": true}'
+        mock_200.json.return_value = {"ok": True}
+        mock_request.side_effect = [mock_429, mock_200]
+
+        result = JikeClient(token_pair)._request("GET", "/test")
+
+        assert result == {"ok": True}
+        mock_sleep.assert_called_once_with(2.0)
+        assert mock_request.call_count == 2
 
 
 # ── _refresh ────────────────────────────────────────────────
@@ -325,6 +343,19 @@ class TestGetPost:
         assert "originalPosts/get" in call_args[0][1]
         assert "id=p1" in call_args[0][1]
 
+    @patch("jike.client.requests.request")
+    def test_get_post_quotes_query_param(self, mock_request, token_pair):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b'{"data": {}}'
+        mock_resp.json.return_value = {"data": {}}
+        mock_request.return_value = mock_resp
+
+        JikeClient(token_pair).get_post("p1&extra=true")
+
+        url = mock_request.call_args[0][1]
+        assert "id=p1%26extra%3Dtrue" in url
+
 
 class TestCreatePost:
 
@@ -360,6 +391,24 @@ class TestCreatePost:
         body = mock_request.call_args[1]["json"]
         assert body["pictureKeys"] == ["key1", "key2"]
 
+    @patch("jike.client.requests.request")
+    def test_create_post_with_topic_and_link(self, mock_request, token_pair):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b'{"data": {}}'
+        mock_resp.json.return_value = {"data": {}}
+        mock_request.return_value = mock_resp
+
+        JikeClient(token_pair).create_post(
+            "With metadata",
+            topic_ids=["topic-1"],
+            link_info={"title": "Example", "linkUrl": "https://example.com"},
+        )
+
+        body = mock_request.call_args[1]["json"]
+        assert body["topicIds"] == ["topic-1"]
+        assert body["linkInfo"]["linkUrl"] == "https://example.com"
+
 
 class TestDeletePost:
 
@@ -374,7 +423,7 @@ class TestDeletePost:
         mock_request.return_value = mock_resp
 
         client = JikeClient(token_pair)
-        result = client.delete_post("post-to-delete")
+        client.delete_post("post-to-delete")
 
         body = mock_request.call_args[1]["json"]
         assert body["id"] == "post-to-delete"
@@ -394,7 +443,7 @@ class TestAddComment:
         mock_request.return_value = mock_resp
 
         client = JikeClient(token_pair)
-        result = client.add_comment("post-001", "Nice post!")
+        client.add_comment("post-001", "Nice post!")
 
         body = mock_request.call_args[1]["json"]
         assert body["targetType"] == "ORIGINAL_POST"
@@ -403,6 +452,19 @@ class TestAddComment:
         assert body["syncToPersonalUpdates"] is False
         assert body["pictureKeys"] == []
         assert body["force"] is False
+
+    @patch("jike.client.requests.request")
+    def test_add_comment_supports_repost_target(self, mock_request, token_pair):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b'{"data": {}}'
+        mock_resp.json.return_value = {"data": {}}
+        mock_request.return_value = mock_resp
+
+        JikeClient(token_pair).add_comment("post-001", "Nice", target_type="REPOST")
+
+        body = mock_request.call_args[1]["json"]
+        assert body["targetType"] == "REPOST"
 
 
 class TestDeleteComment:
@@ -424,6 +486,19 @@ class TestDeleteComment:
         assert body["id"] == "comment-001"
         assert body["targetType"] == "ORIGINAL_POST"
 
+    @patch("jike.client.requests.request")
+    def test_delete_comment_supports_repost_target(self, mock_request, token_pair):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b'{"success": true}'
+        mock_resp.json.return_value = {"success": True}
+        mock_request.return_value = mock_resp
+
+        JikeClient(token_pair).delete_comment("comment-001", target_type="REPOST")
+
+        body = mock_request.call_args[1]["json"]
+        assert body["targetType"] == "REPOST"
+
 
 class TestSearch:
 
@@ -438,7 +513,7 @@ class TestSearch:
         mock_request.return_value = mock_resp
 
         client = JikeClient(token_pair)
-        result = client.search("test keyword")
+        client.search("test keyword")
 
         body = mock_request.call_args[1]["json"]
         assert body["keyword"] == "test keyword"
@@ -480,6 +555,19 @@ class TestProfile:
         url = mock_request.call_args[0][1]
         assert "username=testuser" in url
 
+    @patch("jike.client.requests.request")
+    def test_profile_quotes_query_param(self, mock_request, token_pair):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = b'{"user": {}}'
+        mock_resp.json.return_value = {"user": {}}
+        mock_request.return_value = mock_resp
+
+        JikeClient(token_pair).profile("alice&admin=true")
+
+        url = mock_request.call_args[0][1]
+        assert "username=alice%26admin%3Dtrue" in url
+
 
 class TestFollowers:
 
@@ -494,7 +582,7 @@ class TestFollowers:
         mock_request.return_value = mock_resp
 
         client = JikeClient(token_pair)
-        result = client.followers("user-001")
+        client.followers("user-001")
 
         body = mock_request.call_args[1]["json"]
         assert body["userId"] == "user-001"
@@ -528,7 +616,7 @@ class TestFollowing:
         mock_request.return_value = mock_resp
 
         client = JikeClient(token_pair)
-        result = client.following("user-001")
+        client.following("user-001")
 
         body = mock_request.call_args[1]["json"]
         assert body["userId"] == "user-001"
@@ -642,6 +730,22 @@ class TestBuildParser:
         ])
         assert args.picture_keys == ["k1", "k2"]
 
+    def test_post_with_topic_and_link(self):
+        parser = _build_parser()
+        args = parser.parse_args([
+            "--access-token", "a", "--refresh-token", "r",
+            "post", "--content", "Pic", "--topic-ids", "t1", "t2",
+            "--link-title", "Example", "--link-url", "https://example.com",
+        ])
+        assert args.topic_ids == ["t1", "t2"]
+        assert args.link_title == "Example"
+        assert args.link_url == "https://example.com"
+
+    def test_feed_rejects_non_positive_limit(self):
+        parser = _build_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--access-token", "a", "--refresh-token", "r", "feed", "--limit", "0"])
+
     def test_delete_post_command(self):
         parser = _build_parser()
         args = parser.parse_args([
@@ -660,6 +764,16 @@ class TestBuildParser:
         assert args.command == "comment"
         assert args.post_id == "p1"
         assert args.content == "Nice"
+        assert args.target_type == "ORIGINAL_POST"
+
+    def test_comment_target_type(self):
+        parser = _build_parser()
+        args = parser.parse_args([
+            "--access-token", "a", "--refresh-token", "r",
+            "comment", "--post-id", "p1", "--content", "Nice",
+            "--target-type", "REPOST",
+        ])
+        assert args.target_type == "REPOST"
 
     def test_delete_comment_command(self):
         parser = _build_parser()
@@ -669,6 +783,7 @@ class TestBuildParser:
         ])
         assert args.command == "delete-comment"
         assert args.comment_id == "c1"
+        assert args.target_type == "ORIGINAL_POST"
 
     def test_search_command(self):
         parser = _build_parser()

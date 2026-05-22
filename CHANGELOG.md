@@ -2,6 +2,43 @@
 
 All notable changes to jike-skill will be documented in this file.
 
+## [0.4.2] - 2026-05-23
+
+### Security
+
+- Hardened Markdown export against raw HTML/script injection, unsafe link
+  schemes, unsafe image schemes, disallowed image extensions, non-image content
+  types, and oversized image downloads.
+- Restricted local image downloads to known Jike-related host suffixes by
+  default, with `JIKE_EXPORT_IMAGE_HOSTS` for explicit CDN additions.
+- Added username validation for default export paths to block path traversal.
+- Added `jike auth --out PATH` / `scripts/auth.py --out PATH`, writing token
+  JSON with owner-only `0600` permissions.
+- Added PNG magic-byte validation for generated QR images and bounded repeated
+  auth polling server errors.
+- Changed the Codex marketplace entry from `INSTALLED_BY_DEFAULT` on `main` to
+  opt-in installation pinned to `v0.4.2`.
+
+### Fixed
+
+- Added URL encoding for `get_post`, `profile`, and export profile lookups.
+- Added `--target-type` support to the packaged `jike comment` and
+  `jike delete-comment` commands, matching the repository script behaviour.
+- Replaced `scripts/*.py` duplicate implementations with thin wrappers around
+  package entry points, reducing drift between plugin and pip usage.
+- Added `jike export` / `jike-export` package entry points and included scripts,
+  references, skills, and assets in the wheel.
+- Fixed JSON sidecar naming with `Path.with_suffix(".json")` and atomic writes.
+- Updated `references/api.md`, root and packaged skills, README, and plugin
+  manifests to match current endpoints and entry points.
+- Added typed response envelopes for public client methods and one-shot
+  `Retry-After` handling for API `429` responses.
+- Added optional `topicIds` / `linkInfo` support to post creation and
+  `--checkpoint` / `--resume` support for long exports.
+- Added GitHub Actions CI covering ruff, tracked-file compilation, bandit,
+  pip-audit, pytest, wheel build, and wheel content checks.
+- Raised the optional QR Pillow floor to a non-vulnerable `12.2+` release.
+
 ## [0.4.1] - 2026-05-07
 
 ### Added

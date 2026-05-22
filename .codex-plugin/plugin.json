@@ -1,10 +1,9 @@
 {
   "name": "jike",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Jike (即刻) social network client for Codex agents: QR login, feed, posts, comments, search, notifications, and full-history export.",
   "author": {
-    "name": "Alice & Claude Opus 4.5, 4.6, 4.7",
-    "email": "noreply@anthropic.com"
+    "name": "Alice and contributors"
   },
   "homepage": "https://github.com/MidnightDarling/jike-skill",
   "repository": "https://github.com/MidnightDarling/jike-skill",
@@ -39,11 +38,5 @@
     ],
     "brandColor": "#F6C945",
     "screenshots": []
-  },
-  "contributors": [
-    "Alice",
-    "Claude Opus 4.5",
-    "Claude Opus 4.6",
-    "Claude Opus 4.7"
-  ]
+  }
 }

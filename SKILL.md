@@ -1,11 +1,12 @@
 ---
-name: jike
+name: jike-repo-guide
 description: >
   Interact with Jike (即刻) social network — QR login, feed reading, posting,
-  commenting, searching, and user profile lookup. Use when Claude needs to:
+  commenting, searching, user profile lookup, notifications, and full-history
+  export. Use when an agent needs to:
   (1) Log into Jike via QR code scan, (2) Read following/discovery feeds,
   (3) Create, read, or delete posts, (4) Add or remove comments,
-  (5) Search content or users, (6) Check notifications.
+  (5) Search content or users, (6) Check notifications, (7) Export Jike history.
   Triggers on: "jike", "即刻", "刷即刻", "发即刻", "jike feed", "jike post".
 ---
 
@@ -58,8 +59,9 @@ QR rendering depends on the optional `qrcode[pil]` extra:
 - **If `qrcode` is not installed**: the raw `jike://` URL is printed for
   manual scanning. Install with `pip install jike-skill[qr]`.
 
-Outputs JSON with `access_token` and `refresh_token` to stdout.
-Save the `refresh_token` for reuse (long validity, avoids re-scanning).
+Outputs JSON with `access_token` and `refresh_token` to stdout. Prefer
+`python3 scripts/auth.py --out tokens.json` when saving tokens to disk; it
+creates or overwrites the file with owner-only `0600` permissions.
 
 Prefer environment variables for subsequent commands:
 
@@ -68,28 +70,41 @@ export JIKE_ACCESS_TOKEN="YOUR_ACCESS_TOKEN"
 export JIKE_REFRESH_TOKEN="YOUR_REFRESH_TOKEN"
 ```
 
+Avoid passing tokens as `--access-token` / `--refresh-token` except for short
+local debugging; command-line arguments can be visible to other same-host users.
+
 ### 2. Interact
 
-Run `scripts/client.py` with any command:
+Prefer the installed `jike` CLI when available, or run `scripts/client.py` from
+the repository checkout. The scripts are thin wrappers around the packaged
+implementation.
 
 ```bash
 # Browse feed
+jike feed
 python3 scripts/client.py feed
 
 # Post
+jike post --content "Hello"
 python3 scripts/client.py post --content "Hello"
 
+# Post with optional topic IDs and link metadata
+jike post --content "Hello" --topic-ids TOPIC_ID \
+  --link-title "Example" --link-url "https://example.com"
+
 # Search
+jike search --keyword "AI"
 python3 scripts/client.py search --keyword "AI"
 
 # User profile
+jike profile --username "someone"
 python3 scripts/client.py profile --username "someone"
 ```
 
 ### 3. Token Lifecycle
 
 - All commands auto-refresh on 401 (transparent to caller)
-- If refresh fails, re-run `scripts/auth.py`
+- If refresh fails, re-run `jike auth` or `scripts/auth.py`
 - Only dependency: `requests` (standard, likely already installed)
 
 ## Operations
@@ -105,12 +120,17 @@ python3 scripts/client.py profile --username "someone"
 | `profile` | User profile | `--username` |
 | `user-posts` | List user's posts | `--username`, `--limit` |
 | `notifications` | Unread + list | — |
+| `export` | Export post history | `--username`, `--json-dump` |
 
-### 3. Export All Posts
+### 4. Export All Posts
 
-Run `scripts/export.py` to export a user's entire post history to Markdown:
+Run `jike export` or `scripts/export.py` to export a user's entire post history
+to Markdown:
 
 ```bash
+jike export --username USERNAME \
+  --output posts.md --download-images --json-dump
+
 python3 scripts/export.py --username USERNAME \
   --output posts.md --download-images --json-dump
 ```
@@ -122,19 +142,25 @@ python3 scripts/export.py --username USERNAME \
 | `--download-images` | Download images locally |
 | `--images-dir` | Custom directory for images |
 | `--json-dump` | Also save raw JSON alongside Markdown |
+| `--checkpoint` | Write resumable pagination checkpoint JSON |
+| `--resume` | Resume from `--checkpoint` |
 
 The export automatically:
 - Paginates through all posts (rate-limited)
-- Preserves images (inline URLs or downloaded)
+- Preserves images (inline URLs or downloaded with size/type checks)
 - Includes repost/share content with original author
 - Sorts chronologically (oldest first)
 - Includes topic tags and link attachments
+- Escapes Markdown/HTML-sensitive content from server responses
+- Restricts downloaded images to known Jike-related host suffixes unless
+  `JIKE_EXPORT_IMAGE_HOSTS` is set with additional comma-separated suffixes
+- Can checkpoint long exports page-by-page and resume after interruption
 
 ## Bundled Resources
 
-- **scripts/auth.py** — Standalone QR auth, no pip install needed
-- **scripts/client.py** — Standalone API client, no pip install needed
-- **scripts/export.py** — Full post history export to Markdown
+- **scripts/auth.py** — Repository wrapper for QR auth
+- **scripts/client.py** — Repository wrapper for API operations
+- **scripts/export.py** — Repository wrapper for Markdown export
 - **references/api.md** — Complete API endpoint reference (read when needed)
 
 ## API Reference
