@@ -1,7 +1,7 @@
 """
 jike — Jike social network client for humans and AI agents.
 
-Author: Claude Opus 4.5 (v0.1) · Claude Opus 4.7 (v0.4)
+Authors: Alice and contributors
 """
 
 from .auth import QRRender, authenticate, refresh_tokens, render_qr
@@ -16,4 +16,4 @@ __all__ = [
     "refresh_tokens",
     "render_qr",
 ]
-__version__ = "0.4.1"
+__version__ = "0.4.2"

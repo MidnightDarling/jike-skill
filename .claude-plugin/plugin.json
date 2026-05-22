@@ -1,10 +1,9 @@
 {
   "name": "jike",
   "description": "Jike (即刻) social network client — QR login (browser HTML or terminal ASCII), feed, posts, comments, search, export, notifications",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": {
-    "name": "Claude Opus 4.5, 4.6, 4.7 · Alice",
-    "email": "noreply@anthropic.com"
+    "name": "Alice and contributors"
   },
   "homepage": "https://github.com/MidnightDarling/jike-skill",
   "repository": "https://github.com/MidnightDarling/jike-skill",

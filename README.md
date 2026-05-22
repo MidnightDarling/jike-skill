@@ -7,7 +7,7 @@ API, and one-command export of your entire Jike history to Markdown.
 即刻社交网络客户端 — 给人用，也给 AI agent 用。
 扫码登录支持浏览器 HTML 与终端 ASCII 双通道；一行命令导出全部即刻历史。
 
-**Current version**: `0.4.1` — see [CHANGELOG.md](CHANGELOG.md) for details.
+**Current version**: `0.4.2` — see [CHANGELOG.md](CHANGELOG.md) for details.
 
 ## Install / 安装
 
@@ -42,6 +42,14 @@ jike search --keyword "AI"
 jike post --content "Hello world"
 ```
 
+For shared machines, avoid passing tokens with `--access-token` or
+`--refresh-token`; command-line arguments can be visible to other local users.
+Use environment variables for normal runs, or save fresh login output with:
+
+```bash
+jike auth --out tokens.json   # creates/overwrites the file with 0600 mode
+```
+
 ### Python
 
 ```python
@@ -54,6 +62,11 @@ tokens = authenticate()
 client = JikeClient(tokens)
 feed = client.feed(limit=20)
 client.create_post(content="Hello from Python")
+client.create_post(
+    content="Hello with a topic and link",
+    topic_ids=["TOPIC_ID"],
+    link_info={"title": "Example", "linkUrl": "https://example.com"},
+)
 results = client.search(keyword="AI")
 profile = client.profile(username="someone")
 ```
@@ -111,6 +124,7 @@ Claude Code 则可以用插件一键装、手动复制文件夹到 `~/.claude/sk
 | `jike profile` | User profile | 用户资料 |
 | `jike user-posts` | List a user's posts | 用户帖子列表 |
 | `jike notifications` | Check notifications | 查看通知 |
+| `jike export` / `jike-export` | Export posts to Markdown | 导出帖子 |
 
 ## Export All Posts / 导出全部帖子
 
@@ -118,14 +132,26 @@ Claude Code 则可以用插件一键装、手动复制文件夹到 `~/.claude/sk
 # Export to Markdown (with image URLs inline)
 # 导出为 Markdown（图片以 URL 内联）
 python3 scripts/export.py --username YOUR_USERNAME
+jike export --username YOUR_USERNAME
 
 # Export with local images + raw JSON backup
 # 导出并下载图片 + JSON 原始数据备份
 python3 scripts/export.py --username YOUR_USERNAME \
   --output my_posts.md --download-images --json-dump
+jike export --username YOUR_USERNAME \
+  --output my_posts.md --download-images --json-dump
+
+# Long export with resumable pagination checkpoint
+# 长导出：每页写入 checkpoint，失败后可续跑
+jike export --username YOUR_USERNAME \
+  --output my_posts.md --json-dump --checkpoint my_posts.checkpoint.json
+jike export --username YOUR_USERNAME \
+  --output my_posts.md --json-dump --checkpoint my_posts.checkpoint.json --resume
 ```
 
 Both commands use `JIKE_ACCESS_TOKEN` and `JIKE_REFRESH_TOKEN` if flags are omitted.
+The packaged `jike export` command and repository `scripts/export.py` wrapper now
+share the same implementation.
 
 Features / 功能:
 - Paginates through ALL posts automatically / 自动翻页获取全部帖子
@@ -133,6 +159,11 @@ Features / 功能:
 - Preserves reposts with original author / 保留转发内容和原作者
 - Chronological order / 按时间排序
 - Topic tags and links / 包含话题标签和链接
+
+Downloaded images are restricted to known Jike-related host suffixes by default:
+`okjike.com`, `ruguoapp.com`, and `jellow.site`. If Jike moves media to a new
+CDN, set `JIKE_EXPORT_IMAGE_HOSTS` to a comma-separated list of additional host
+suffixes before running export.
 
 ## How Auth Works / 认证原理
 
@@ -146,6 +177,16 @@ No passwords. Jike uses QR-code scan authentication (same as their web client):
 4. Server returns `access_token` + `refresh_token`
 5. `refresh_token` has long validity — save it, skip QR next time
 
+### Token hygiene
+
+- Prefer `JIKE_ACCESS_TOKEN` and `JIKE_REFRESH_TOKEN` over CLI token flags.
+- Do not commit tokens to dotfiles, notes, screenshots, or exported Markdown.
+- On Linux and multi-user hosts, process arguments and sometimes process
+  environments can be inspected by other same-host users depending on system
+  policy. Treat `refresh_token` as a long-lived secret.
+- If writing token JSON to disk, use `jike auth --out PATH`; it writes with
+  owner-only `0600` permissions.
+
 ### QR rendering (v0.4.0+)
 
 When `qrcode[pil]` is installed, the QR is rendered through **two
@@ -155,7 +196,9 @@ the other:
 - **Browser HTML** — a self-contained HTML page (PNG embedded as
   base64) is written to an unpredictable tempfile path with `0o600`
   permissions on POSIX, and its `file://` URI is printed to stderr.
-  The file is removed automatically when the auth flow returns.
+  The file is removed automatically when the auth flow returns. Windows does
+  not get the same POSIX mode-bit guarantee, so use a trusted local account
+  context for QR login on shared Windows machines.
 - **Terminal ASCII** — the same QR is also printed to stderr for
   terminals that can render it.
 
@@ -169,12 +212,12 @@ so it can be scanned out-of-band.
 
 ```
 jike-skill/
-├── SKILL.md                   # Legacy root skill definition
+├── SKILL.md                   # Legacy repository guide skill
 ├── CHANGELOG.md               # Version history
-├── scripts/                   # Standalone scripts (agent runs these)
-│   ├── auth.py                # QR authentication
-│   ├── client.py              # API client CLI
-│   └── export.py              # Full history export to Markdown
+├── scripts/                   # Thin wrappers around src/jike entry points
+│   ├── auth.py                # QR authentication wrapper
+│   ├── client.py              # API client CLI wrapper
+│   └── export.py              # Full history export wrapper
 ├── references/
 │   └── api.md                 # API endpoint reference (loaded on demand)
 ├── .agents/plugins/
@@ -195,7 +238,10 @@ jike-skill/
     ├── __main__.py
     ├── types.py
     ├── auth.py
-    └── client.py
+    ├── client.py
+    ├── client_cli.py
+    ├── export.py
+    └── export_utils.py
 ```
 
 ## Design / 设计
@@ -203,8 +249,24 @@ jike-skill/
 - **Dual-mode** — Works as a `pip install` package and as an AI-agent plugin
 - **Frozen dataclasses** — `TokenPair` is immutable; refresh returns new instances
 - **Auto-retry on 401** — Token refresh is transparent to the caller
+- **Basic backoff** — API calls retry one `429` response using `Retry-After`
+- **Resumable export** — `--checkpoint` + `--resume` protects long history exports
 - **Progressive disclosure** — SKILL.md is lean; API details in `references/api.md`
 - **Zero config** — No passwords, no API keys, just scan and go
+
+## Development / 开发
+
+```bash
+pip install -e ".[dev,qr]"
+ruff check src scripts tests
+bandit -q $(git ls-files 'src/*.py' 'scripts/*.py')
+pip-audit --skip-editable
+pytest
+```
+
+CI runs the same checks on pull requests and pushes, then builds the wheel and
+verifies that scripts, references, packaged skills, assets, and `SECURITY.md`
+are included.
 
 ## Acknowledgments / 致谢
 
@@ -231,5 +293,6 @@ Authors:
 - **GPT-5** — v0.3.0 (security hardening, env var tokens, timeouts)
 - **Claude Opus 4.7** — v0.4.0 (secure browser-HTML QR login)
 - **GPT-5.5** — v0.4.1 (Codex install guidance and SVG app icon)
+- **GPT-5** — v0.4.2 (export hardening, package/script convergence)
 
 License: MIT

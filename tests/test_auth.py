@@ -20,7 +20,6 @@ import os
 import stat
 import sys
 import urllib.parse
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,6 +40,18 @@ from jike.auth import (
     render_qr,
 )
 from jike.types import TokenPair
+
+PNG_BYTES = b"\x89PNG\r\n\x1a\nfake"
+
+
+def _mock_qrcode_module(ascii_error=None, image_bytes: bytes = PNG_BYTES):
+    module = MagicMock()
+    qr_instance = MagicMock()
+    qr_instance.make_image.return_value.save.side_effect = lambda buf, format: buf.write(image_bytes)
+    if ascii_error:
+        qr_instance.print_ascii.side_effect = ascii_error
+    module.QRCode.return_value = qr_instance
+    return module
 
 
 # ── create_session ──────────────────────────────────────────
@@ -143,7 +154,7 @@ class TestRenderQr:
             assert result.any_visible is False
 
     def test_returns_render_with_html_and_ascii_when_qrcode_available(self):
-        with patch.dict(sys.modules, {"qrcode": MagicMock()}):
+        with patch.dict(sys.modules, {"qrcode": _mock_qrcode_module()}):
             result = render_qr("test-data", caption="uuid-xyz")
 
         assert isinstance(result, QRRender)
@@ -156,7 +167,7 @@ class TestRenderQr:
             result.html_path.unlink(missing_ok=True)
 
     def test_html_failure_does_not_block_ascii(self):
-        with patch.dict(sys.modules, {"qrcode": MagicMock()}), \
+        with patch.dict(sys.modules, {"qrcode": _mock_qrcode_module()}), \
              patch("jike.auth._write_qr_html", side_effect=OSError("disk full")):
             result = render_qr("test-data", caption="uuid-xyz")
 
@@ -165,13 +176,9 @@ class TestRenderQr:
         assert result.any_visible is True
 
     def test_ascii_failure_does_not_block_html(self):
-        qr_module = MagicMock()
-        # The QRCode instance returned by qrcode.QRCode() is what owns print_ascii
-        qr_instance = MagicMock()
-        qr_instance.print_ascii.side_effect = UnicodeEncodeError(
-            "ascii", "", 0, 1, "bad encoding"
+        qr_module = _mock_qrcode_module(
+            ascii_error=UnicodeEncodeError("ascii", "", 0, 1, "bad encoding")
         )
-        qr_module.QRCode.return_value = qr_instance
 
         with patch.dict(sys.modules, {"qrcode": qr_module}):
             result = render_qr("test-data", caption="uuid-xyz")
@@ -485,6 +492,28 @@ class TestPollConfirmation:
 
         assert result is not None
 
+    @patch("jike.auth.time.sleep")
+    @patch("jike.auth.requests.get")
+    def test_200_without_tokens_returns_none(self, mock_get, mock_sleep):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {}
+        mock_resp.headers = {}
+        mock_get.return_value = mock_resp
+
+        assert poll_confirmation("uuid-123") is None
+        assert mock_get.call_count == 1
+
+    @patch("jike.auth.time.sleep")
+    @patch("jike.auth.requests.get")
+    def test_stops_after_repeated_server_errors(self, mock_get, mock_sleep):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_get.return_value = mock_resp
+
+        assert poll_confirmation("uuid-123") is None
+        assert mock_get.call_count == 3
+
 
 # ── refresh_tokens ──────────────────────────────────────────
 
@@ -620,6 +649,13 @@ class TestAuthenticate:
         assert exc_info.value.code == 1
         mock_refresh.assert_not_called()
 
+    @patch("jike.auth.create_session", side_effect=requests.ConnectionError("down"))
+    def test_exits_on_session_creation_failure(self, mock_create):
+        with pytest.raises(SystemExit) as exc_info:
+            authenticate()
+
+        assert exc_info.value.code == 1
+
     @patch("jike.auth.refresh_tokens")
     @patch("jike.auth.poll_confirmation")
     @patch("jike.auth.render_qr")
@@ -717,6 +753,22 @@ class TestAuthenticate:
 
         assert not html_file.exists()
 
+    @patch("jike.auth.refresh_tokens", side_effect=requests.ConnectionError("down"))
+    @patch("jike.auth.poll_confirmation")
+    @patch("jike.auth.render_qr")
+    @patch("jike.auth.create_session")
+    def test_exits_when_refresh_fails(
+        self, mock_create, mock_render, mock_poll, mock_refresh, token_pair
+    ):
+        mock_create.return_value = "uuid-abc"
+        mock_render.return_value = QRRender(html_path=None, ascii_printed=True)
+        mock_poll.return_value = token_pair
+
+        with pytest.raises(SystemExit) as exc_info:
+            authenticate()
+
+        assert exc_info.value.code == 1
+
 
 # ── auth main (CLI) ────────────────────────────────────────
 
@@ -729,7 +781,7 @@ class TestAuthMain:
     ):
         mock_auth.return_value = token_pair
 
-        main()
+        main([])
 
         captured = capsys.readouterr()
         output = json.loads(captured.out)

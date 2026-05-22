@@ -7,6 +7,7 @@ dist/
 .venv/
 .coverage
 .pytest_cache/
+.omx/
 *_jike_export.md
 *_jike_export.json
 *_images/

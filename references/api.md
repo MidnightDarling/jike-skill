@@ -75,6 +75,10 @@ POST /1.0/personalUpdate/single
 Body: { "id": "<postId>" }
 ```
 
+Note: this endpoint is only documented here as an observed alternate detail
+lookup. Current package and export code use `/1.0/originalPosts/get` for post
+detail and `/1.0/userPost/listMore` for user history pagination.
+
 ---
 
 ## Posts
@@ -97,6 +101,10 @@ Body: {
 }
 ```
 
+`pictureKeys`, `topicIds`, and `linkInfo` are optional. The packaged client
+exposes them through `JikeClient.create_post(...)` and the `jike post`
+`--picture-keys`, `--topic-ids`, `--link-title`, and `--link-url` flags.
+
 ### Delete Post
 
 ```
@@ -113,7 +121,7 @@ Body: { "id": "<postId>" }
 ```
 POST /1.0/comments/add
 Body: {
-  "targetType": "ORIGINAL_POST",
+  "targetType": "ORIGINAL_POST",  // or "REPOST"
   "targetId": "<postId>",
   "content": "Nice post!",
   "syncToPersonalUpdates": false,
@@ -128,7 +136,7 @@ Body: {
 POST /1.0/comments/remove
 Body: {
   "id": "<commentId>",
-  "targetType": "ORIGINAL_POST"
+  "targetType": "ORIGINAL_POST"  // or "REPOST"
 }
 ```
 
@@ -154,9 +162,10 @@ Body: {
 ### List User Posts (Paginated)
 
 ```
-POST /1.0/personalUpdate/single
+POST /1.0/userPost/listMore
 Body: {
   "username": "<username>",
+  "limit": 20,
   "loadMoreKey": { "lastId": "<post_id>" }  // optional, from previous response
 }
 ```
@@ -171,13 +180,12 @@ Response:
 ```
 
 Notes:
-- Returns ~25 posts per page (server-controlled, no `limit` param)
+- Current implementation sends `limit`; the server may still apply its own page size
 - `loadMoreKey` is `null` or absent when no more posts exist
 - `loadMoreKey` is an object `{"lastId": "..."}`, not a string
 - `type` is `ORIGINAL_POST` or `REPOST`
 - `target` field is present only for reposts, containing the original post
 - `pictures` is an array of objects with `picUrl`, `middlePicUrl`, `thumbnailUrl`
-- **Deprecated**: `/1.0/userPost/listMore` — returns 404 as of Feb 2026
 
 ---
 

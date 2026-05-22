@@ -9,10 +9,10 @@
       "source": {
         "source": "url",
         "url": "https://github.com/MidnightDarling/jike-skill.git",
-        "ref": "main"
+        "ref": "v0.4.2"
       },
       "policy": {
-        "installation": "INSTALLED_BY_DEFAULT",
+        "installation": "AVAILABLE",
         "authentication": "ON_USE"
       },
       "category": "Social"

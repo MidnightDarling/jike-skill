@@ -13,12 +13,12 @@ from jike.types import TokenPair
 
 @pytest.fixture
 def access_token():
-    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.access.test"
+    return "fake-access-token-for-tests"
 
 
 @pytest.fixture
 def refresh_token():
-    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.refresh.test"
+    return "fake-refresh-token-for-tests"
 
 
 @pytest.fixture
@@ -31,12 +31,12 @@ def token_pair(access_token, refresh_token):
 
 @pytest.fixture
 def new_access_token():
-    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.access.new"
+    return "fake-new-access-token-for-tests"
 
 
 @pytest.fixture
 def new_refresh_token():
-    return "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.refresh.new"
+    return "fake-new-refresh-token-for-tests"
 
 
 # ── Mock response factories ──────────────────────────────────
