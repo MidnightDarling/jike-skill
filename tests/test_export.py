@@ -10,10 +10,12 @@ import pytest
 
 from jike.export import fetch_all_posts, fetch_user_profile
 from jike.export_utils import (
+    MAX_IMAGE_BYTES,
     download_image,
     export_to_markdown,
     json_path_for,
     post_to_markdown,
+    safe_url,
     validate_username,
 )
 
@@ -153,6 +155,72 @@ def test_fetch_all_posts_writes_checkpoint(mock_fetch, tmp_path):
     assert saved["username"] == "alice"
     assert saved["posts"] == posts
     assert saved["loadMoreKey"] is None
+
+
+def test_safe_url_rejects_whitespace_and_newlines():
+    assert safe_url("https://good.example.com/path") == "https://good.example.com/path"
+    assert safe_url("https://ok.example.com/has space") is None
+    assert safe_url("https://e.example.com/a\n[c](javascript:alert(1))") is None
+
+
+def test_post_to_markdown_drops_url_with_embedded_newline():
+    post = {
+        "id": "1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "content": "body",
+        "linkInfo": {"title": "t", "linkUrl": "https://e.example.com\n[c](javascript:alert(1))"},
+    }
+    markdown = post_to_markdown(post, 1)
+    assert "javascript:" not in markdown
+    assert "](https://e.example.com" not in markdown
+
+
+@patch("jike.export_utils.requests.get")
+def test_download_image_rejects_oversize_content_length(mock_get, tmp_path):
+    mock_resp = MagicMock()
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = None
+    mock_resp.headers = {"Content-Type": "image/png", "Content-Length": str(MAX_IMAGE_BYTES + 1)}
+    mock_resp.iter_content.return_value = [b"abc"]
+    mock_resp.raise_for_status.return_value = None
+    mock_get.return_value = mock_resp
+
+    result = download_image("https://cdn.ruguoapp.com/big.png", tmp_path / "images", tmp_path, 1, "orig_1")
+
+    assert result is None
+    assert not (tmp_path / "images" / "post_0001_orig_1.png").exists()
+
+
+@patch("jike.export_utils.requests.get")
+def test_download_image_rejects_streamed_oversize(mock_get, tmp_path):
+    mock_resp = MagicMock()
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = None
+    # No Content-Length header; oversize is only detectable while streaming.
+    mock_resp.headers = {"Content-Type": "image/png"}
+    mock_resp.iter_content.return_value = [b"x" * (MAX_IMAGE_BYTES + 1)]
+    mock_resp.raise_for_status.return_value = None
+    mock_get.return_value = mock_resp
+
+    result = download_image("https://cdn.ruguoapp.com/big.png", tmp_path / "images", tmp_path, 1, "orig_1")
+
+    assert result is None
+    assert not (tmp_path / "images" / "post_0001_orig_1.png").exists()
+
+
+@patch("jike.export_utils.requests.get")
+def test_download_image_rejects_non_image_content_type(mock_get, tmp_path):
+    mock_resp = MagicMock()
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = None
+    mock_resp.headers = {"Content-Type": "text/html", "Content-Length": "3"}
+    mock_resp.iter_content.return_value = [b"abc"]
+    mock_resp.raise_for_status.return_value = None
+    mock_get.return_value = mock_resp
+
+    result = download_image("https://cdn.ruguoapp.com/evil.png", tmp_path / "images", tmp_path, 1, "orig_1")
+
+    assert result is None
 
 
 @patch("jike.export.fetch_user_posts")

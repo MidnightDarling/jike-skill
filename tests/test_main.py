@@ -68,3 +68,11 @@ class TestMainDispatch:
         with patch("jike.export.main") as mock_export_main:
             main()
             mock_export_main.assert_called_once_with(["--username", "alice"])
+
+    @patch("jike.__main__.sys.argv", ["jike", "--help"])
+    def test_help_flag_lists_all_commands(self, capsys):
+        main()
+        out = capsys.readouterr().out
+        assert "auth" in out
+        assert "export" in out
+        assert "feed" in out
