@@ -2,7 +2,7 @@
   "name": "jike-skill",
   "owner": {
     "name": "Alice and contributors",
-    "github": "MidnightDarling"
+    "url": "https://github.com/MidnightDarling"
   },
   "metadata": {
     "description": "Jike (即刻) social network skill for AI agents — QR login, feed, posts, comments, search, export",

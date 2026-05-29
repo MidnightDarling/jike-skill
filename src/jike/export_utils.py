@@ -42,6 +42,13 @@ def md_label(value: object) -> str:
 
 def safe_url(url: object) -> Optional[str]:
     text = clean(url).strip()
+    # A well-formed URL never contains raw whitespace. Rejecting it closes a
+    # Markdown-injection vector: clean() preserves "\n"/"\t", and an embedded
+    # newline in a link/image URL could break out of "[title](url)" and smuggle
+    # a second link (e.g. a javascript: scheme) onto the next line, bypassing the
+    # scheme allowlist below on lenient renderers.
+    if not text or any(ch.isspace() for ch in text):
+        return None
     parsed = urlparse(text)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return None
